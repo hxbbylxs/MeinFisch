@@ -34,12 +34,42 @@ int total_nodes_searched = 0;
 int lowest_max_recursion_depth = 0;
 
 
+// generates next moves only when necessary (lazy move generation)
+// example: no need to generate all quiet moves when a capture move already causes a cutoff
+std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandidate, GameBoard const &board, MoveGenPhase & phase) {
+    std::vector<uint32_t> moves;
+    switch (phase) {
+        case TTMove:
+            phase = Killer;
+            if (savedData.evaluationFlag != EMPTY) {
+                return {savedData.bestMove};
+            }
+        case Killer:
+            phase = Captures;
+            if (killerCandidate != savedData.bestMove && isPseudoLegalMove(killerCandidate,board)) {
+                return {killerCandidate};
+            }
+        case Captures:
+            phase = Quiets;
+            moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
+            mvv_lva_MoveOrdering(moves);
+            return moves;
+        case Quiets:
+            phase = Done;
+            moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
+            staticMoveOrdering(moves, board, 0); // TODO
+            return moves;
+
+        case Done:
+            return {};
+    }
+    return {};
+}
 
 
 
 
-
-void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard & board, int shift) {
+void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard const & board, int shift) {
 
     if (__builtin_popcountll(board.allPieces) < 14) {
         std::sort(pseudoLegalMoves.begin()+shift, pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
@@ -52,22 +82,12 @@ void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard & board, 
 });
     }
 }
-// Move Order
-/* Queen Promo
- * MVV
- * LVA
- * History Score
- * Other Promo
- * */
+
+// 1. Queen Promo 2. history score 3. other Promo
+// will be used only for quiet moves
 int getMoveScoreMiddleGame(uint32_t move) {
     Move mv = decodeMove(move);
-    int score = 0;
-    if (mv.captured_piece) {
-        score += 1'000*abs(STATIC_MG_PIECE_VALUES[(mv.captured_piece)]);
-        score -= 100*abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
-    } else {
-        score += history_move_scores[mv.from][mv.to];
-    }
+    int score = history_move_scores[mv.from][mv.to];
     if (mv.pawn_promote_to) {
         if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
             score += 1'000'000;
@@ -80,25 +100,12 @@ int getMoveScoreMiddleGame(uint32_t move) {
 
 
 
-// Move Order:
-/* TT Move
- * Killer Move
- * Queen Promo
- * MVV
- * LVA
- * MVP
- * Other Promos
- * */
+// 1. Queen Promo 2. MVP 4. Other Promo
+// will be used only for quiet moves
 int getMoveScoreEndGame(uint32_t move) {
     Move mv = decodeMove(move);
-    int score = 0;
-    if (mv.captured_piece) {
-        score += 1'000*abs(STATIC_MG_PIECE_VALUES[(mv.captured_piece)]);
-        score -= 100*abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
-    } else {
-        score += abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
-        if (mv.piece == Constants::WHITE_KING || mv.piece == Constants::BLACK_KING) score += 400;
-    }
+    int score = abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
+    if (mv.piece == Constants::WHITE_KING || mv.piece == Constants::BLACK_KING) score += 400;
     if (mv.pawn_promote_to) {
         if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
             score += 1'000'000;
@@ -241,7 +248,6 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition, early check
     if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta)));
-    //if (maxRecursionDepth <= 0) return updateReturnValue(evaluate(board,alpha,beta));
 
     Data savedData = getData(board.zobristHash);
     if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= maxRecursionDepth) {
@@ -271,29 +277,39 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     auto castle_rights = board.castleInformation;
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
-    
 
-    for (uint32_t move : pseudoLegalMoves) {
-        if (!isLegalMove(move, board)) continue;
-        foundLegalMove = true;
+    MoveGenPhase phase = TTMove;
 
-        board.applyPseudoLegalMove(move);
-        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
-        board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+    while (phase != Done) {
+        bool breakWhile = false;
+        auto moves = pickNextMoves(savedData, killer_moves[maxRecursionDepth] ,board,phase);
 
-        if (currentValue > max) {
-            max = currentValue;
-            bestMove = move;
-            if (max > alpha) {
-                alpha = max;
+        for (uint32_t move : moves) {
+            if (!isLegalMove(move, board)) continue;
+            foundLegalMove = true;
+
+            board.applyPseudoLegalMove(move);
+            int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+
+            if (currentValue > max) {
+                max = currentValue;
+                bestMove = move;
+                if (max > alpha) {
+                    alpha = max;
+                }
+            }
+            if (alpha >= beta) {
+                killer_moves[maxRecursionDepth] = move;
+                increaseMoveScore(move,maxRecursionDepth);
+                breakWhile = true;
+                break;
             }
         }
-        if (alpha >= beta) {
-            killer_moves[maxRecursionDepth] = move;
-            increaseMoveScore(move,maxRecursionDepth);
-            break;
-        }
+
+        if (breakWhile) break;
     }
+
     if (foundLegalMove) {
         Evaluation_Flag evaluation_flag;
         if (max <= originalAlpha) {

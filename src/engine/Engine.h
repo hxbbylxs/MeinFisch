@@ -11,6 +11,16 @@
 #include <cstdint>
 
 #include "GameBoard.h"
+#include "Memory.h"
+
+enum MoveGenPhase {
+    TTMove,
+    Killer,
+    Captures,
+    Quiets,
+    Done
+};
+
 
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> global_evaluated_positions_counter = {}; // TODO remove
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> evaluated_positions_in_quiscence = {}; // TODO remove
@@ -22,6 +32,8 @@ void mvv_lva_MoveOrdering(std::vector<uint32_t> & pseudoLegalMoves);
 void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t killerMove);
 void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t TTmove, uint32_t killerMove);
 bool isCriticalMove(uint32_t move);
+
+std::vector<uint32_t> pickNextMoves(Data const & savedData, uint32_t killerCandidate, GameBoard const & board, MoveGenPhase & phase);
 
 void startTimeLimit(int timeLimit);
 void playerControlledTimeLimit(int ignore);

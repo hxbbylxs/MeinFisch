@@ -21,15 +21,18 @@
 #include "EvaluationConstants.h"
 
 std::array<int,Constants::MAX_RECURSION_DEPTH> nodes_at_depth = {};
-std::array<std::string,3> testFENs = {
+std::array<std::string,4> testFENs = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 "
+    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ",
+    "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "
 };
+std::array<int,4> testDepths = {5,4,5,4};
+
 void perft(int position) {
     nodes_at_depth = {};
     GameBoard board = convertFENtoGameBoard(testFENs[position-1]);
-    int maxDepth = position == 2 ? 4 : 5;
+    int maxDepth = testDepths[position-1];
     auto start = std::chrono::high_resolution_clock::now();
     int eval = testMinimax(maxDepth,board);
     auto end = std::chrono::high_resolution_clock::now();
