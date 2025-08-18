@@ -174,11 +174,8 @@ void startTimeLimit(int timeLimit) {
 pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
     total_nodes_searched++;
 
-    vector<uint32_t> pseudoLegalMoves = getPseudoLegalMoves(board,board.whiteToMove,ALL);
 
     Data savedData = getData(board.zobristHash);
-    if (savedData.evaluationFlag != EMPTY) dynamicMoveOrdering(pseudoLegalMoves,board,savedData.bestMove,killer_moves[maxRecursionDepth]);
-    else dynamicMoveOrdering(pseudoLegalMoves,board,killer_moves[maxRecursionDepth]);
 
     int alpha = -CHECKMATE_VALUE;
     int beta = CHECKMATE_VALUE;
@@ -192,21 +189,35 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     uint64_t hash_before = board.zobristHash;
 
 
-    for (uint32_t move : pseudoLegalMoves) {
+    MoveGenPhase phase = TTMove;
 
-        if (timeIsUp) return {};
-        if (!isLegalMove(move,board)) continue;
-        
-        board.applyPseudoLegalMove(move);
-        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
-        board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+    while (phase != Done) {
+        bool breakWhile = false;
+        auto moves = pickNextMoves(savedData, killer_moves[maxRecursionDepth] ,board,phase);
 
-        if (currentValue > max) {
-            max = currentValue;
-            currentBestMove = move;
-            if (max > alpha) alpha = max;
+        for (uint32_t move : moves) {
+            if (!isLegalMove(move, board)) continue;
+
+            board.applyPseudoLegalMove(move);
+            int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+
+            if (currentValue > max) {
+                max = currentValue;
+                currentBestMove = move;
+                if (max > alpha) {
+                    alpha = max;
+                }
+            }
+            if (alpha >= beta) {
+                killer_moves[maxRecursionDepth] = move;
+                increaseMoveScore(move,maxRecursionDepth);
+                breakWhile = true;
+                break;
+            }
         }
 
+        if (breakWhile) break;
     }
 
 
@@ -241,11 +252,6 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     bool foundLegalMove = false;
     int originalAlpha = alpha;
     uint32_t bestMove = 0;
-
-    vector<uint32_t> pseudoLegalMoves = getPseudoLegalMoves(board,board.whiteToMove,ALL);
-
-    if (savedData.evaluationFlag != EMPTY) dynamicMoveOrdering(pseudoLegalMoves, board,savedData.bestMove,killer_moves[maxRecursionDepth]);
-    else dynamicMoveOrdering(pseudoLegalMoves,board,killer_moves[maxRecursionDepth]);
 
     //Data for unmaking the move
     int plies = board.plies;
