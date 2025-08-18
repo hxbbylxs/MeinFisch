@@ -133,7 +133,7 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
     // and has to make a move after e.g. 10 seconds
     std::thread timeGuard( startTimeLimit,timeLimit);
     auto start = std::chrono::high_resolution_clock::now();
-    auto dontStartNewDepthTime = start + (std::chrono::milliseconds((2*timeLimit)/3));
+    auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/2));
 
     pair<uint32_t,int> currentBestMove = {};
     pair<uint32_t,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
