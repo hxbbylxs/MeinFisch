@@ -29,8 +29,7 @@ void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard cons
 int getMoveScoreEndGame(uint32_t move);
 int getMoveScoreMiddleGame(uint32_t move);
 void mvv_lva_MoveOrdering(std::vector<uint32_t> & pseudoLegalMoves);
-void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t killerMove);
-void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t TTmove, uint32_t killerMove);
+
 bool isCriticalMove(uint32_t move);
 
 std::vector<uint32_t> pickNextMoves(Data const & savedData, uint32_t killerCandidate, GameBoard const & board, MoveGenPhase & phase);

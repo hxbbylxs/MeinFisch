@@ -125,31 +125,6 @@ void mvv_lva_MoveOrdering(vector<uint32_t> & pseudoLegalMoves) {
     });
 }
 
-void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t TTMove, uint32_t killerMove) {
-    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), TTMove); it != pseudoLegalMoves.end()) {
-        std::iter_swap(pseudoLegalMoves.begin(), it);
-    }
-    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), killerMove); it != pseudoLegalMoves.end()) {
-        std::iter_swap(pseudoLegalMoves.begin(), it);
-        staticMoveOrdering(pseudoLegalMoves, board, 2);
-    } else {
-        staticMoveOrdering(pseudoLegalMoves, board, 1);
-    }
-}
-
-void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t killerMove) {
-    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), killerMove); it != pseudoLegalMoves.end()) {
-        std::iter_swap(pseudoLegalMoves.begin(), it);
-        staticMoveOrdering(pseudoLegalMoves, board, 1);
-    } else {
-        staticMoveOrdering(pseudoLegalMoves, board, 0);
-    }
-}
-
-bool isCriticalMove(uint32_t move) {
-    return static_cast<bool>(move & Constants::CRITICAL_MOVE_BITMASK);
-}
-
 
 std::atomic<bool> timeIsUp(false);
 pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
