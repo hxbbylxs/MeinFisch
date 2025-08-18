@@ -1,0 +1,350 @@
+//
+// Created by salom on 13.07.2025.
+//
+#include <iostream>
+#include <vector>
+
+using std::vector;
+
+#include <utility>
+using std::pair;
+#include <future>
+#include <chrono>
+#include <atomic>
+
+#include "Engine.h"
+#include "Memory.h"
+#include "EvaluationFunction.h"
+
+#include "Constants.h" //lib constants
+#include "EvaluationConstants.h"
+using Constants::move_decoding_bitmasks;
+using Constants::MoveDecoding;
+
+#include "GameBoard.h" // lib game_logic
+#include "MoveGeneration.h"
+
+#include "Output.h" // lib io
+
+
+
+
+//TODO better move ordering -> lazy move ordering, lazy move generation
+int total_nodes_searched = 0;
+int lowest_max_recursion_depth = 0;
+
+
+
+
+
+
+
+void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard & board, int shift) {
+
+    if (__builtin_popcountll(board.allPieces) < 14) {
+        std::sort(pseudoLegalMoves.begin()+shift, pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+     return getMoveScoreEndGame(a) > getMoveScoreEndGame(b);
+ });
+    } else {
+
+        std::sort(pseudoLegalMoves.begin()+shift, pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+    return getMoveScoreMiddleGame(a) > getMoveScoreMiddleGame(b);
+});
+    }
+}
+// Move Order
+/* Queen Promo
+ * MVV
+ * LVA
+ * History Score
+ * Other Promo
+ * */
+int getMoveScoreMiddleGame(uint32_t move) {
+    Move mv = decodeMove(move);
+    int score = 0;
+    if (mv.captured_piece) {
+        score += 1'000*abs(STATIC_MG_PIECE_VALUES[(mv.captured_piece)]);
+        score -= 100*abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
+    } else {
+        score += history_move_scores[mv.from][mv.to];
+    }
+    if (mv.pawn_promote_to) {
+        if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
+            score += 1'000'000;
+        } else {
+            score = 0;
+        }
+    }
+    return score;
+}
+
+
+
+// Move Order:
+/* TT Move
+ * Killer Move
+ * Queen Promo
+ * MVV
+ * LVA
+ * MVP
+ * Other Promos
+ * */
+int getMoveScoreEndGame(uint32_t move) {
+    Move mv = decodeMove(move);
+    int score = 0;
+    if (mv.captured_piece) {
+        score += 1'000*abs(STATIC_MG_PIECE_VALUES[(mv.captured_piece)]);
+        score -= 100*abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
+    } else {
+        score += abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
+        if (mv.piece == Constants::WHITE_KING || mv.piece == Constants::BLACK_KING) score += 400;
+    }
+    if (mv.pawn_promote_to) {
+        if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
+            score += 1'000'000;
+        } else {
+            score = 0;
+        }
+    }
+    return score;
+}
+
+
+void mvv_lva_MoveOrdering(vector<uint32_t> & pseudoLegalMoves) {
+    std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+        int score_a = 5*abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & a) >> 10]) - abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::PIECE] & a)]);
+        int score_b = 5*abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & b) >> 10]) - abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::PIECE] & b)]);
+        return score_a > score_b;
+    });
+}
+
+void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t TTMove, uint32_t killerMove) {
+    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), TTMove); it != pseudoLegalMoves.end()) {
+        std::iter_swap(pseudoLegalMoves.begin(), it);
+    }
+    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), killerMove); it != pseudoLegalMoves.end()) {
+        std::iter_swap(pseudoLegalMoves.begin(), it);
+        staticMoveOrdering(pseudoLegalMoves, board, 2);
+    } else {
+        staticMoveOrdering(pseudoLegalMoves, board, 1);
+    }
+}
+
+void dynamicMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard & board, uint32_t killerMove) {
+    if (auto it = std::find(pseudoLegalMoves.begin(), pseudoLegalMoves.end(), killerMove); it != pseudoLegalMoves.end()) {
+        std::iter_swap(pseudoLegalMoves.begin(), it);
+        staticMoveOrdering(pseudoLegalMoves, board, 1);
+    } else {
+        staticMoveOrdering(pseudoLegalMoves, board, 0);
+    }
+}
+
+bool isCriticalMove(uint32_t move) {
+    return static_cast<bool>(move & Constants::CRITICAL_MOVE_BITMASK);
+}
+
+
+std::atomic<bool> timeIsUp(false);
+pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
+    timeIsUp = false;
+    // timeLimit == IGNORE means player presses enter to stop the calculation. Any other timeLimit is when the computer plays
+    // and has to make a move after e.g. 10 seconds
+    std::thread timeGuard( startTimeLimit,timeLimit);
+    auto start = std::chrono::high_resolution_clock::now();
+    auto dontStartNewDepthTime = start + (std::chrono::milliseconds((2*timeLimit)/3));
+
+    pair<uint32_t,int> currentBestMove = {};
+    pair<uint32_t,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
+                                                        // if not timeIsUp in the next iteration we know that the last value is usable
+    for (int depth = 0; depth <= 30; depth++) {
+        if (timeIsUp) break;
+        total_nodes_searched = 0;
+        currentBestMove = incompleteMoveCalculation;
+
+        incompleteMoveCalculation = getOptimalMoveNegaMax(board,depth);
+        if (!timeIsUp) {
+            printAnalysisData(incompleteMoveCalculation,depth, depth-lowest_max_recursion_depth ,start,total_nodes_searched);
+        }
+
+        // Not worth starting a new depth
+        if (!timeIsUp && dontStartNewDepthTime-std::chrono::high_resolution_clock::now() < std::chrono::milliseconds(0)) {
+            currentBestMove = incompleteMoveCalculation;
+            timeIsUp = true;
+            break;
+        }
+        decreaseAllMoveScores();
+    }
+    timeGuard.join();
+    return currentBestMove;
+}
+
+void startTimeLimit(int timeLimit) {
+    auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
+    while (deadline > std::chrono::high_resolution_clock::now() && !timeIsUp) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    timeIsUp = true;
+}
+
+
+// basically the first call of the negamax algorithm but instead of just returning an evaluation
+// it returns the best move with the evaluation so the computer knows which move to make
+pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
+    total_nodes_searched++;
+
+    vector<uint32_t> pseudoLegalMoves = getPseudoLegalMoves(board,board.whiteToMove,ALL);
+
+    Data savedData = getData(board.zobristHash);
+    if (savedData.evaluationFlag != EMPTY) dynamicMoveOrdering(pseudoLegalMoves,board,savedData.bestMove,killer_moves[maxRecursionDepth]);
+    else dynamicMoveOrdering(pseudoLegalMoves,board,killer_moves[maxRecursionDepth]);
+
+    int alpha = -CHECKMATE_VALUE;
+    int beta = CHECKMATE_VALUE;
+    int max = -CHECKMATE_VALUE;
+
+    uint32_t currentBestMove = 0;
+
+    int plies = board.plies;
+    auto castle_rights = board.castleInformation;
+    int enPassant = board.enPassant;
+    uint64_t hash_before = board.zobristHash;
+
+
+    for (uint32_t move : pseudoLegalMoves) {
+
+        if (timeIsUp) return {};
+        if (!isLegalMove(move,board)) continue;
+        
+        board.applyPseudoLegalMove(move);
+        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+        board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+
+        if (currentValue > max) {
+            max = currentValue;
+            currentBestMove = move;
+            if (max > alpha) alpha = max;
+        }
+
+    }
+
+
+
+    //if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,extremum,currentBestMove,board);
+    return {currentBestMove,max};
+}
+
+int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
+    if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
+
+    total_nodes_searched++;
+
+    int position_repetitions = board.board_positions[board.zobristHash];
+    if (position_repetitions >= 3) return 0; // threefold repetition, early check
+    if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta)));
+    //if (maxRecursionDepth <= 0) return updateReturnValue(evaluate(board,alpha,beta));
+
+    Data savedData = getData(board.zobristHash);
+    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= maxRecursionDepth) {
+        if (savedData.evaluationFlag == EXACT) {
+            return updateReturnValue(savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
+        }
+        if (savedData.evaluationFlag == UPPER_BOUND && savedData.evaluation <= alpha) {
+            return updateReturnValue(savedData.evaluation);
+        }
+        if (savedData.evaluationFlag == LOWER_BOUND && savedData.evaluation >= beta) {
+            return updateReturnValue(savedData.evaluation);
+        }
+    }
+
+    int max =  -CHECKMATE_VALUE-100;
+    bool foundLegalMove = false;
+    int originalAlpha = alpha;
+    uint32_t bestMove = 0;
+
+    vector<uint32_t> pseudoLegalMoves = getPseudoLegalMoves(board,board.whiteToMove,ALL);
+
+    if (savedData.evaluationFlag != EMPTY) dynamicMoveOrdering(pseudoLegalMoves, board,savedData.bestMove,killer_moves[maxRecursionDepth]);
+    else dynamicMoveOrdering(pseudoLegalMoves,board,killer_moves[maxRecursionDepth]);
+
+    //Data for unmaking the move
+    int plies = board.plies;
+    auto castle_rights = board.castleInformation;
+    int enPassant = board.enPassant;
+    uint64_t hash_before = board.zobristHash;
+    
+
+    for (uint32_t move : pseudoLegalMoves) {
+        if (!isLegalMove(move, board)) continue;
+        foundLegalMove = true;
+
+        board.applyPseudoLegalMove(move);
+        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+        board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+
+        if (currentValue > max) {
+            max = currentValue;
+            bestMove = move;
+            if (max > alpha) {
+                alpha = max;
+            }
+        }
+        if (alpha >= beta) {
+            killer_moves[maxRecursionDepth] = move;
+            increaseMoveScore(move,maxRecursionDepth);
+            break;
+        }
+    }
+    if (foundLegalMove) {
+        Evaluation_Flag evaluation_flag;
+        if (max <= originalAlpha) {
+            evaluation_flag = UPPER_BOUND;
+        } else if (max >= beta) {
+            evaluation_flag = LOWER_BOUND;
+        } else {
+            evaluation_flag = EXACT;
+        }
+        if (!timeIsUp) tryMakeNewEntry(evaluation_flag,maxRecursionDepth,(max),bestMove,board);
+        return updateReturnValue(max);
+    }
+    int mate_evaluation = board.isCheck(board.whiteToMove) ?  - CHECKMATE_VALUE : 0;
+    //if (!timeIsUp) tryMakeNewEntry(EXACT,Constants::INFINITE,(mate_evaluation),bestMove,board);
+    return updateReturnValue(mate_evaluation);
+}
+
+int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
+
+    if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
+
+    total_nodes_searched++;
+    if (maxRecursionDepth < lowest_max_recursion_depth) lowest_max_recursion_depth = maxRecursionDepth;
+
+    int current_eval = evaluate(board, alpha, beta);
+    if (maxRecursionDepth <= -8) return current_eval;
+    if (current_eval >= beta) return beta;
+    if (current_eval > alpha) alpha = current_eval;
+
+    //Data for unmaking the move
+    int plies = board.plies;
+    auto castle_rights = board.castleInformation;
+    int enPassant = board.enPassant;
+    uint64_t hash_before = board.zobristHash;
+
+    auto only_capture_moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
+    mvv_lva_MoveOrdering(only_capture_moves);
+
+    for (uint32_t move : only_capture_moves) {
+        int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & move) >> 10]);
+        if (current_eval + captured_piece_value < alpha) continue; // delta pruning
+        if (!isLegalMove(move,board)) continue;
+        board.applyPseudoLegalMove(move);
+        int currentValue = -quiscenceSearch(board,maxRecursionDepth-1,(-beta),(-alpha));
+        board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+        if (currentValue > alpha) {
+            alpha = currentValue;
+            if (alpha >= beta) {
+                break;
+            }
+        }
+    }
+    return alpha;
+}
