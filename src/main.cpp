@@ -9,7 +9,6 @@
 
 #include "Constants.h"
 #include "MoveGenerationConstants.h"
-#include "Settings.h"
 
 #include "Test.h"
 

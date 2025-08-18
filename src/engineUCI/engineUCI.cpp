@@ -10,7 +10,6 @@
 
 #include "MoveGeneration.h"
 #include "Memory.h"
-#include "Settings.h"
 #include "Output.h"
 #include "Engine.h"
 #include "Conversions.h"

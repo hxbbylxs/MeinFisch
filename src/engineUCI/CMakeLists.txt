@@ -4,4 +4,4 @@ add_library (
 )
 
 target_include_directories(engineUCI PUBLIC .)
-target_link_libraries(engineUCI engine io game_loop)
+target_link_libraries(engineUCI engine io)

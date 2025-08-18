@@ -10,6 +10,10 @@
 
 #include "GameBoard.h" // lib game_logic
 
+// Global Game Board
+
+inline GameBoard global_board;
+
 //Transposition Table
 enum Evaluation_Flag {
     EMPTY,
