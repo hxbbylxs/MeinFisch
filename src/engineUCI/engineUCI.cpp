@@ -114,8 +114,8 @@ std::string engineUCI::calcBestMove(std::string const & go) {
 
 
     int estimated_remaining_moves = std::max(10,60-global_board.moves);
-    //int searchTime = std::min(10000.0,global_board.whiteToMove ? (wtime/estimated_remaining_moves + 0.8*winc) : (btime/estimated_remaining_moves + 0.8*binc));
-    int searchTime = 100000;
+    int searchTime = std::min(10000.0,global_board.whiteToMove ? (wtime/estimated_remaining_moves + 0.8*winc) : (btime/estimated_remaining_moves + 0.8*binc));
+
     auto res = iterativeDeepening(global_board, searchTime);
 
     return "bestmove "+convertMoveToOutput(res.first);
