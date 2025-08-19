@@ -12,6 +12,8 @@ int testMinimax(int maxRecursionDepth, GameBoard & board);
 void testCaptureMoveGen();
 void testEval();
 void testMoveGenPerformance();
+void debugTest();
+int testNegamax(int maxRecursionDepth, GameBoard & board, int alpha, int beta);
 
 
 

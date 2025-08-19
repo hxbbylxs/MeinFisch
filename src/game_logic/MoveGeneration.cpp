@@ -230,7 +230,10 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
     Move mv = decodeMove(move);
     if (board.whiteToMove != mv.piece%2) return false;
     if (!(board.pieces[mv.piece] & (1ULL << mv.from))) return false;
-    if (mv.captured_piece && !(board.pieces[mv.captured_piece] & 1ULL << mv.to)) return false;
+    if (mv.captured_piece && !(board.pieces[mv.captured_piece] & 1ULL << mv.to)){
+        // captured piece is wrong except it is an en passant capture
+        if (mv.to != board.enPassant || (mv.captured_piece != Constants::WHITE_PAWN && mv.captured_piece != Constants::BLACK_PAWN) || (mv.piece != Constants::WHITE_PAWN && mv.piece != Constants::BLACK_PAWN) ) return false;
+    }
     if (mv.castle) {
         if (!(board.castleInformation[mv.castle])) return false;
         if (mv.castle == Constants::WHITE_KING_SIDE_CASTLE || mv.castle == Constants::BLACK_KING_SIDE_CASTLE) {
@@ -250,6 +253,7 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
 
     if (mv.piece == Constants::WHITE_PAWN || mv.piece == Constants::BLACK_PAWN) {
         uint64_t pseudoLegalSquares = pawnCaptureBitMask[!board.whiteToMove][mv.from] & (enemyPieces | (board.enPassant != -1 ? 1ULL << board.enPassant : 0));
+        if (!mv.captured_piece) pseudoLegalSquares = 0;
         int singlePushSquare = (mv.from + (board.whiteToMove ? -8 : 8));
         if (1ULL << singlePushSquare & ~board.allPieces) {
             pseudoLegalSquares |= 1ULL << singlePushSquare;
@@ -260,18 +264,23 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_KNIGHT || mv.piece == Constants::BLACK_KNIGHT) {
         uint64_t pseudoLegalSquares = knightAttackBitMasks[mv.from] & ~ownPieces;
+        if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_BISHOP || mv.piece == Constants::BLACK_BISHOP) {
         uint64_t pseudoLegalSquares = getBishopAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_ROOK || mv.piece == Constants::BLACK_ROOK) {
         uint64_t pseudoLegalSquares = getRookAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_QUEEN || mv.piece == Constants::BLACK_QUEEN) {
         uint64_t pseudoLegalSquares = getQueenAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else {
         uint64_t pseudoLegalSquares = getKingAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     }
     return true;

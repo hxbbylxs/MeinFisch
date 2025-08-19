@@ -15,7 +15,6 @@ enum MoveType {
     QUIETS,
     ALL
 };
-// starting 17.08. 20:49
 
 [[nodiscard]]
 std::vector<uint32_t> getPseudoLegalMoves(GameBoard const & board, bool forWhite, MoveType type);

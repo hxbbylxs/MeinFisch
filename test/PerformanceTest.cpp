@@ -45,9 +45,20 @@ void perft(int position) {
     std::cout << "Evaluation: " << eval << std::endl;
 }
 
+void debugTest() {
+    std::string criticalFEN = "6k1/rppqbrpp/p3Nn2/3pBP2/2nP4/PPNQP2P/2P5/R4RK1 b - - 0 19";
+    GameBoard board = convertFENtoGameBoard(criticalFEN);
+    for (int i = 1; i <= 7; i++) {
+
+        int result = testNegamax(i,board,-145,-130);
+        std::cout << "depth: " << i << " cp: " << result << std::endl;
+    }
+
+}
+
 int testMinimax(int maxRecursionDepth, GameBoard & board) {
     nodes_at_depth[maxRecursionDepth]++;
-    if (maxRecursionDepth <= 0) return evaluate(board,-CHECKMATE_VALUE,CHECKMATE_VALUE);
+    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,-CHECKMATE_VALUE,CHECKMATE_VALUE);
     auto psm = getPseudoLegalMoves(board, board.whiteToMove,ALL);
 
     int plies = board.plies;
@@ -65,6 +76,29 @@ int testMinimax(int maxRecursionDepth, GameBoard & board) {
     }
     return max;
 }
+
+int testNegamax(int maxRecursionDepth, GameBoard &board, int alpha, int beta) {
+    nodes_at_depth[maxRecursionDepth]++;
+    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,alpha,beta);
+    auto psm = getPseudoLegalMoves(board, board.whiteToMove,ALL);
+    mvv_lva_MoveOrdering(psm);
+
+    int plies = board.plies;
+    auto castle_rights = board.castleInformation;
+    int enPassant = board.enPassant;
+    uint64_t hash_before = board.zobristHash;
+
+    int max = -CHECKMATE_VALUE;
+
+    for (uint32_t move : psm) {
+        if (!isLegalMove(move, board)) continue;
+        board.applyPseudoLegalMove(move);
+        max = std::max(max,-testNegamax(maxRecursionDepth-1, board, -beta,-alpha));
+        board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+    }
+    return max;
+}
+
 
 void perftPruning(int position) {
     clearTT();

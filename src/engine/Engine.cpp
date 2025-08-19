@@ -3,6 +3,8 @@
 //
 #include <iostream>
 #include <vector>
+#include <stdexcept>
+#include <algorithm>
 
 using std::vector;
 
@@ -29,9 +31,9 @@ using Constants::MoveDecoding;
 
 
 
-//TODO better move ordering -> lazy move ordering, lazy move generation
 int total_nodes_searched = 0;
 int lowest_max_recursion_depth = 0;
+std::array<int,5> cutoffs = {};
 
 
 // generates next moves only when necessary (lazy move generation)
@@ -41,14 +43,16 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandid
     switch (phase) {
         case TTMove:
             phase = Killer;
-            if (savedData.evaluationFlag != EMPTY) {
-                return {savedData.bestMove};
-            }
+                if (savedData.evaluationFlag != EMPTY) {
+                    return {savedData.bestMove};
+                }
+            [[fallthrough]];
         case Killer:
             phase = Captures;
             if (killerCandidate != savedData.bestMove && isPseudoLegalMove(killerCandidate,board)) {
                 return {killerCandidate};
             }
+            [[fallthrough]];
         case Captures:
             phase = Quiets;
             moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
@@ -59,11 +63,8 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandid
             moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
             staticMoveOrdering(moves, board, 0); // TODO
             return moves;
-
-        case Done:
-            return {};
     }
-    return {};
+    throw std::runtime_error("Unrecognized phase");
 }
 
 
@@ -129,8 +130,7 @@ void mvv_lva_MoveOrdering(vector<uint32_t> & pseudoLegalMoves) {
 std::atomic<bool> timeIsUp(false);
 pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
     timeIsUp = false;
-    // timeLimit == IGNORE means player presses enter to stop the calculation. Any other timeLimit is when the computer plays
-    // and has to make a move after e.g. 10 seconds
+
     std::thread timeGuard( startTimeLimit,timeLimit);
     auto start = std::chrono::high_resolution_clock::now();
     auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/2));
@@ -173,7 +173,7 @@ void startTimeLimit(int timeLimit) {
 // it returns the best move with the evaluation so the computer knows which move to make
 pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
     total_nodes_searched++;
-
+    cutoffs = {};
 
     Data savedData = getData(board.zobristHash);
 
@@ -189,7 +189,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     uint64_t hash_before = board.zobristHash;
 
 
-    MoveGenPhase phase = TTMove;
+    MoveGenPhase phase = Captures;
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -197,9 +197,11 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
 
         for (uint32_t move : moves) {
             if (!isLegalMove(move, board)) continue;
+            //printCompleteMove(decodeMove(move));
 
             board.applyPseudoLegalMove(move);
             int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            //std::cout << "Evaluation " << currentValue << std::endl;
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
             if (currentValue > max) {
@@ -209,18 +211,13 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
                     alpha = max;
                 }
             }
-            if (alpha >= beta) {
-                killer_moves[maxRecursionDepth] = move;
-                increaseMoveScore(move,maxRecursionDepth);
-                breakWhile = true;
-                break;
-            }
         }
-
-        if (breakWhile) break;
     }
 
-
+    std::cout << "TT Cutoffs: " << cutoffs[TTMove] << std::endl;
+    std::cout << "Killer Cutoffs: " << cutoffs[Killer] << std::endl;
+    std::cout << "Capture Cutoffs: " << cutoffs[Captures] << std::endl;
+    std::cout << "Quiet Cutoffs: " << cutoffs[Quiets] << std::endl;
 
     //if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,extremum,currentBestMove,board);
     return {currentBestMove,max};
@@ -259,7 +256,10 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
+    GameBoard board_before = board;
+
     MoveGenPhase phase = TTMove;
+
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -267,6 +267,9 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
 
         for (uint32_t move : moves) {
             if (!isLegalMove(move, board)) continue;
+
+            //if (phase != Killer+1 && move == killer_moves[maxRecursionDepth]) continue;
+            //if (phase != TTMove+1 && move == savedData.bestMove) continue;
             foundLegalMove = true;
 
             board.applyPseudoLegalMove(move);
@@ -281,8 +284,9 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
                 }
             }
             if (alpha >= beta) {
-                killer_moves[maxRecursionDepth] = move;
+                if (!(move & MoveDecoding::CAPTURE)) killer_moves[maxRecursionDepth] = move;
                 increaseMoveScore(move,maxRecursionDepth);
+                cutoffs[phase-1]++;
                 breakWhile = true;
                 break;
             }
@@ -317,7 +321,7 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
 
     int current_eval = evaluate(board, alpha, beta);
     if (maxRecursionDepth <= -8) return current_eval;
-    if (current_eval >= beta) return beta;
+    if (current_eval >= beta) return current_eval;
     if (current_eval > alpha) alpha = current_eval;
 
     //Data for unmaking the move

@@ -106,15 +106,16 @@ std::string engineUCI::calcBestMove(std::string const & go) {
     }
 
     // Extrahiere Zeitangaben, falls vorhanden
-    int wtime = uciParams.count("wtime") ? uciParams["wtime"] : 500000;
-    int btime = uciParams.count("btime") ? uciParams["btime"] : 500000;
+    int wtime = uciParams.count("wtime") ? uciParams["wtime"] : 9000000;
+    int btime = uciParams.count("btime") ? uciParams["btime"] : 9000000;
     int winc  = uciParams.count("winc")  ? uciParams["winc"]  : 0;
     int binc  = uciParams.count("binc")  ? uciParams["binc"]  : 0;
     int movestogo = uciParams.count("movestogo") ? uciParams["movestogo"] : -1;
 
-    // Beispiel-Debug-Ausgabe
+
     int estimated_remaining_moves = std::max(10,60-global_board.moves);
-    int searchTime = std::min(10000.0,global_board.whiteToMove ? (wtime/estimated_remaining_moves + 0.8*winc) : (btime/estimated_remaining_moves + 0.8*binc));
+    //int searchTime = std::min(10000.0,global_board.whiteToMove ? (wtime/estimated_remaining_moves + 0.8*winc) : (btime/estimated_remaining_moves + 0.8*binc));
+    int searchTime = 100000;
     auto res = iterativeDeepening(global_board, searchTime);
 
     return "bestmove "+convertMoveToOutput(res.first);
