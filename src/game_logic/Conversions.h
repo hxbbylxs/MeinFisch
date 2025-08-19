@@ -24,6 +24,7 @@ std::string toString(Constants::Piece piece);
 std::string toString(Constants::Castle castle);
 //std::string toString(Player const & player);
 std::string algebraicNotation(uint32_t move);
+std::string longAlgebraicNotation(uint32_t move);
 
 
 #endif //CONVERSIONS_H

@@ -45,6 +45,4 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
 
 
 
-
-
 #endif //ENGINE_H

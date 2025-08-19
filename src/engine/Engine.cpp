@@ -5,6 +5,9 @@
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
+#include <Conversions.h>
+#include <set>
+#include <queue>
 
 using std::vector;
 
@@ -42,24 +45,22 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandid
     std::vector<uint32_t> moves;
     switch (phase) {
         case TTMove:
-            phase = Killer;
                 if (savedData.evaluationFlag != EMPTY) {
                     return {savedData.bestMove};
                 }
+            phase = Killer;
             [[fallthrough]];
         case Killer:
-            phase = Captures;
             if (killerCandidate != savedData.bestMove && isPseudoLegalMove(killerCandidate,board)) {
                 return {killerCandidate};
             }
+            phase = Captures;
             [[fallthrough]];
         case Captures:
-            phase = Quiets;
             moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
             mvv_lva_MoveOrdering(moves);
             return moves;
         case Quiets:
-            phase = Done;
             moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
             staticMoveOrdering(moves, board, 0); // TODO
             return moves;
@@ -188,6 +189,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
+    std::priority_queue<pair<int,uint32_t>> MoveOrder;
 
     MoveGenPhase phase = Captures;
 
@@ -204,15 +206,24 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
             //std::cout << "Evaluation " << currentValue << std::endl;
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
+            MoveOrder.emplace(currentValue,move);
             if (currentValue > max) {
                 max = currentValue;
                 currentBestMove = move;
                 if (max > alpha) {
-                    alpha = max;
+                    //alpha = max;
                 }
             }
         }
+        phase = static_cast<MoveGenPhase>(phase +1);
     }
+
+    /*for (int i = 0; i < 10; i++) {
+        auto move = MoveOrder.top();
+        MoveOrder.pop();
+        std::cout << "Move " << longAlgebraicNotation(move.second) << " Eval: " << move.first << std::endl;
+    }*/
+
 
     /*std::cout << "TT Cutoffs: " << cutoffs[TTMove] << std::endl;
     std::cout << "Killer Cutoffs: " << cutoffs[Killer] << std::endl;
@@ -231,9 +242,10 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition, early check
     if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta)));
+    //if (maxRecursionDepth <= 0) return updateReturnValue(evaluate(board,(alpha),(beta)));
 
     Data savedData = getData(board.zobristHash);
-    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= maxRecursionDepth) {
+    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth == maxRecursionDepth) {
         if (savedData.evaluationFlag == EXACT) {
             return updateReturnValue(savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
@@ -260,6 +272,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
 
     MoveGenPhase phase = TTMove;
 
+    std::set<uint32_t> alreadyTestedMoves = {};
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -268,8 +281,9 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
         for (uint32_t move : moves) {
             if (!isLegalMove(move, board)) continue;
 
-            //if (phase != Killer+1 && move == killer_moves[maxRecursionDepth]) continue;
-            //if (phase != TTMove+1 && move == savedData.bestMove) continue;
+            if (alreadyTestedMoves.contains(move)) continue;
+            alreadyTestedMoves.insert(move);
+
             foundLegalMove = true;
 
             board.applyPseudoLegalMove(move);
@@ -284,15 +298,16 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
                 }
             }
             if (alpha >= beta) {
-                if (!(move & MoveDecoding::CAPTURE)) killer_moves[maxRecursionDepth] = move;
+                if (!(move & move_decoding_bitmasks[MoveDecoding::CAPTURE])) killer_moves[maxRecursionDepth] = move;
                 increaseMoveScore(move,maxRecursionDepth);
-                //cutoffs[phase-1]++;
+                cutoffs[phase-1]++;
                 breakWhile = true;
                 break;
             }
         }
 
         if (breakWhile) break;
+        phase = static_cast<MoveGenPhase>(phase +1);
     }
 
     if (foundLegalMove) {
@@ -335,7 +350,7 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
 
     for (uint32_t move : only_capture_moves) {
         int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & move) >> 10]);
-        if (current_eval + captured_piece_value < alpha) continue; // delta pruning
+        //if (current_eval + captured_piece_value < alpha) continue; // delta pruning
         if (!isLegalMove(move,board)) continue;
         board.applyPseudoLegalMove(move);
         int currentValue = -quiscenceSearch(board,maxRecursionDepth-1,(-beta),(-alpha));

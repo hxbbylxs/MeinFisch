@@ -114,4 +114,11 @@ std::string toString(Constants::Castle castle) {
     return "Unknown";
 }*/
 
-
+std::string longAlgebraicNotation(uint32_t move) {
+    std::string result = convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::FROM])>>4)+
+        convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::TO])>>14);
+    if (move & Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION]) {
+        result += (Constants::PROMOTION_STRING[(move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION])>>20]);
+    }
+    return result;
+}
