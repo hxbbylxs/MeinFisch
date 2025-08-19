@@ -214,10 +214,10 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
         }
     }
 
-    std::cout << "TT Cutoffs: " << cutoffs[TTMove] << std::endl;
+    /*std::cout << "TT Cutoffs: " << cutoffs[TTMove] << std::endl;
     std::cout << "Killer Cutoffs: " << cutoffs[Killer] << std::endl;
     std::cout << "Capture Cutoffs: " << cutoffs[Captures] << std::endl;
-    std::cout << "Quiet Cutoffs: " << cutoffs[Quiets] << std::endl;
+    std::cout << "Quiet Cutoffs: " << cutoffs[Quiets] << std::endl;*/
 
     //if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,extremum,currentBestMove,board);
     return {currentBestMove,max};
@@ -286,7 +286,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
             if (alpha >= beta) {
                 if (!(move & MoveDecoding::CAPTURE)) killer_moves[maxRecursionDepth] = move;
                 increaseMoveScore(move,maxRecursionDepth);
-                cutoffs[phase-1]++;
+                //cutoffs[phase-1]++;
                 breakWhile = true;
                 break;
             }
