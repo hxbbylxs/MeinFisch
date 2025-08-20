@@ -195,7 +195,8 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
 
     //std::priority_queue<pair<int,uint32_t>> MoveOrder;
 
-    MoveGenPhase phase = Captures;
+    MoveGenPhase phase = TTMove;
+    int extension = 1;
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -206,7 +207,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
             //printCompleteMove(decodeMove(move));
 
             board.applyPseudoLegalMove(move);
-            int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            int currentValue = -negaMax(board,maxRecursionDepth-1+extension,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
             //std::cout << "Evaluation " << currentValue << std::endl;
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
@@ -219,6 +220,8 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
                 }
             }
         }
+
+        extension = 0; // only TTmove extended by 1
         phase = static_cast<MoveGenPhase>(phase +1);
     }
 
@@ -234,7 +237,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     std::cout << "Capture Cutoffs: " << cutoffs[Captures] << std::endl;
     std::cout << "Quiet Cutoffs: " << cutoffs[Quiets] << std::endl;*/
 
-    //if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,extremum,currentBestMove,board);
+    if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,max,currentBestMove,board);
     return {currentBestMove,max};
 }
 
@@ -277,10 +280,11 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
 
     MoveGenPhase phase = TTMove;
 
+
     while (phase != Done) {
         bool breakWhile = false;
         auto moves = pickNextMoves(savedData, killer_moves[maxRecursionDepth] ,board,phase);
-
+        int move_number = 0;
         for (uint32_t move : moves) {
             if (!isLegalMove(move, board)) continue;
 
@@ -288,9 +292,21 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
             if (move == killer_moves[maxRecursionDepth] && phase > Killer) continue;
 
             foundLegalMove = true;
+            move_number++;
 
             board.applyPseudoLegalMove(move);
-            int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            int currentValue;
+
+            if (phase == Quiets && move_number > 5 && maxRecursionDepth > 5) {
+                // late move reduction
+                currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+                //research at full depth if necessary
+                if (currentValue >= beta) {
+                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+                }
+            } else {
+                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            }
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
             if (currentValue > max) {
