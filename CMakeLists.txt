@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(MeinFischV4)
+project(MeinFischV6)
 
 set(CMAKE_CXX_STANDARD 20)
 # Nur für Windows + MinGW

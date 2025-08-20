@@ -33,9 +33,9 @@ inline constexpr int ROOK_ON_OPEN_LINE = 40;
 inline constexpr int ROOK_ON_HALF_OPEN_LINE = 20;
 inline constexpr int ROOK_XRAY = 15;
 inline constexpr int ROOK_CONNECTED = 10;
-inline constexpr int ROOK_IN_KING_ZONE = 50;
+inline constexpr int ROOK_IN_KING_ZONE = 20;
 
-inline constexpr int QUEEN_IN_KING_ZONE = 90;
+inline constexpr int QUEEN_IN_KING_ZONE = 30;
 inline constexpr int QUEEN_XRAY = 15;
 
 inline constexpr int PAWN_ATTACKS_KING_ZONE = 2;
@@ -44,7 +44,7 @@ inline constexpr int BISHOP_ATTACKS_KING_ZONE = 4;
 inline constexpr int ROOK_ATTACKS_KING_ZONE = 5;
 inline constexpr int QUEEN_ATTACKS_KING_ZONE = 9;
 
-inline constexpr int KING_ZONE_ATTACKER_EXP_BASE = 4; // 4^num_attackers
+inline constexpr int KING_ZONE_ATTACKER_EXP_BASE = 2; // 2^num_attackers
 
 inline constexpr uint64_t PST_CENTER_RING = 3ULL << 19 | 15ULL << 26 | 15ULL << 34 | 3ULL << 43;
 inline constexpr uint64_t PST_CENTER_SQUARE = 3ULL << 27 | 3ULL << 35;
