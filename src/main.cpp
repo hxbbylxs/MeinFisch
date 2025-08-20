@@ -18,8 +18,6 @@ int main() {
     initializeSliderAttackBitMask(); //TODO at compiletime
     initializeHistoryHeuristic();
 
-    //debugTest();
-
     engineUCI engine = engineUCI();
     std::string input;
 

@@ -25,7 +25,7 @@ enum MoveGenPhase {
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> global_evaluated_positions_counter = {}; // TODO remove
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> evaluated_positions_in_quiscence = {}; // TODO remove
 
-void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board, int shift);
+void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board);
 int getMoveScoreEndGame(uint32_t move);
 int getMoveScoreMiddleGame(uint32_t move);
 void mvv_lva_MoveOrdering(std::vector<uint32_t> & pseudoLegalMoves);

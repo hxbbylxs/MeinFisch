@@ -36,6 +36,7 @@ using Constants::MoveDecoding;
 
 int total_nodes_searched = 0;
 int lowest_max_recursion_depth = 0;
+int TThits = 0;
 std::array<int,5> cutoffs = {};
 
 
@@ -62,24 +63,22 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandid
             return moves;
         case Quiets:
             moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
-            staticMoveOrdering(moves, board, 0); // TODO
+            staticMoveOrdering(moves, board);
             return moves;
     }
     throw std::runtime_error("Unrecognized phase");
 }
 
 
-
-
-void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard const & board, int shift) {
+void staticMoveOrdering(vector<uint32_t> & pseudoLegalMoves, GameBoard const & board) {
 
     if (__builtin_popcountll(board.allPieces) < 14) {
-        std::sort(pseudoLegalMoves.begin()+shift, pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
      return getMoveScoreEndGame(a) > getMoveScoreEndGame(b);
  });
     } else {
 
-        std::sort(pseudoLegalMoves.begin()+shift, pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
     return getMoveScoreMiddleGame(a) > getMoveScoreMiddleGame(b);
 });
     }
@@ -136,14 +135,17 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
     auto start = std::chrono::high_resolution_clock::now();
     auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/2));
 
+    total_nodes_searched = 0;
+    TThits = 0;
+
     pair<uint32_t,int> currentBestMove = {};
     pair<uint32_t,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
                                                         // if not timeIsUp in the next iteration we know that the last value is usable
     for (int depth = 0; depth <= 30; depth++) {
         if (timeIsUp) break;
-        total_nodes_searched = 0;
-        currentBestMove = incompleteMoveCalculation;
 
+        currentBestMove = incompleteMoveCalculation;
+        lowest_max_recursion_depth = 0;
         incompleteMoveCalculation = getOptimalMoveNegaMax(board,depth);
         if (!timeIsUp) {
             printAnalysisData(incompleteMoveCalculation,depth, depth-lowest_max_recursion_depth ,start,total_nodes_searched);
@@ -157,6 +159,7 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
         }
         decreaseAllMoveScores();
     }
+
     timeGuard.join();
     return currentBestMove;
 }
@@ -173,6 +176,7 @@ void startTimeLimit(int timeLimit) {
 // basically the first call of the negamax algorithm but instead of just returning an evaluation
 // it returns the best move with the evaluation so the computer knows which move to make
 pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
+    //TODO save exact move order for better move ordering and search extensions
     total_nodes_searched++;
     cutoffs = {};
 
@@ -189,7 +193,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
-    std::priority_queue<pair<int,uint32_t>> MoveOrder;
+    //std::priority_queue<pair<int,uint32_t>> MoveOrder;
 
     MoveGenPhase phase = Captures;
 
@@ -206,12 +210,12 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
             //std::cout << "Evaluation " << currentValue << std::endl;
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
-            MoveOrder.emplace(currentValue,move);
+            //MoveOrder.emplace(currentValue,move);
             if (currentValue > max) {
                 max = currentValue;
                 currentBestMove = move;
                 if (max > alpha) {
-                    //alpha = max;
+                    alpha = max;
                 }
             }
         }
@@ -242,17 +246,19 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition, early check
     if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta)));
-    //if (maxRecursionDepth <= 0) return updateReturnValue(evaluate(board,(alpha),(beta)));
 
     Data savedData = getData(board.zobristHash);
-    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth == maxRecursionDepth) {
+    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= maxRecursionDepth) {
         if (savedData.evaluationFlag == EXACT) {
+            TThits++;
             return updateReturnValue(savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
         if (savedData.evaluationFlag == UPPER_BOUND && savedData.evaluation <= alpha) {
+            TThits++;
             return updateReturnValue(savedData.evaluation);
         }
         if (savedData.evaluationFlag == LOWER_BOUND && savedData.evaluation >= beta) {
+            TThits++;
             return updateReturnValue(savedData.evaluation);
         }
     }
@@ -268,11 +274,8 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
-    GameBoard board_before = board;
 
     MoveGenPhase phase = TTMove;
-
-    std::set<uint32_t> alreadyTestedMoves = {};
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -281,8 +284,8 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
         for (uint32_t move : moves) {
             if (!isLegalMove(move, board)) continue;
 
-            if (alreadyTestedMoves.contains(move)) continue;
-            alreadyTestedMoves.insert(move);
+            if (move == savedData.bestMove && phase != TTMove) continue;
+            if (move == killer_moves[maxRecursionDepth] && phase > Killer) continue;
 
             foundLegalMove = true;
 
@@ -349,9 +352,11 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
     mvv_lva_MoveOrdering(only_capture_moves);
 
     for (uint32_t move : only_capture_moves) {
-        int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & move) >> 10]);
-        //if (current_eval + captured_piece_value < alpha) continue; // delta pruning
+
+        int captured_piece_value = abs(STATIC_EG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & move) >> 10]);
+        if (current_eval + captured_piece_value + LAZY_EVAL_SAFETY_MARGIN < alpha) continue; // delta pruning
         if (!isLegalMove(move,board)) continue;
+
         board.applyPseudoLegalMove(move);
         int currentValue = -quiscenceSearch(board,maxRecursionDepth-1,(-beta),(-alpha));
         board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);

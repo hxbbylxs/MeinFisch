@@ -28,8 +28,8 @@ void engineUCI::receiveCommand(std::string const & message) {
     } else if (message.rfind("position",0) == 0) {
         global_board = convertInputPositionToGameBoard(message);
     } else if (message.rfind("go",0) == 0) {
-        //printGameBoard(global_board);
         std::cout << calcBestMove(message) << std::endl;
+        clearTT();
     } else if (message == "stop") {
 
     }

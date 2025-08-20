@@ -10,7 +10,6 @@
 
 #include "GameBoard.h" //lib game_logic
 
-//TODO different PST for middle game and end game
 
 // returns a value in centipawns (positive ~ good for the color to move)
 int evaluate(GameBoard const & board, int alpha, int beta) {

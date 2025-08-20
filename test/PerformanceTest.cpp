@@ -149,10 +149,10 @@ void testEval() {
 void testMoveGenPerformance() {    GameBoard board = convertFENtoGameBoard(testFENs[1]);
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 1000000; i++) {
-        auto psm = getPseudoLegalMoves(board,true,ALL);
-        auto psm2 = getPseudoLegalMoves(board,false,ALL);
+        auto psm = getPseudoLegalMoves(board,true,CAPTURES);
+        auto psm2 = getPseudoLegalMoves(board,true,QUIETS);
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Total time: " << duration.count() << " ms" << std::endl;
+    std::cout << "Total time (1mio Move Gens): " << duration.count() << " ms" << std::endl;
 }
