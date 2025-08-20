@@ -44,7 +44,7 @@ inline constexpr int BISHOP_ATTACKS_KING_ZONE = 4;
 inline constexpr int ROOK_ATTACKS_KING_ZONE = 5;
 inline constexpr int QUEEN_ATTACKS_KING_ZONE = 9;
 
-inline constexpr int KING_ZONE_ATTACKER_EXP_BASE = 2; // 2^num_attackers
+inline constexpr int KING_ZONE_ATTACKER_EXP_BASE = 3; // 3^num_attackers
 
 inline constexpr uint64_t PST_CENTER_RING = 3ULL << 19 | 15ULL << 26 | 15ULL << 34 | 3ULL << 43;
 inline constexpr uint64_t PST_CENTER_SQUARE = 3ULL << 27 | 3ULL << 35;

@@ -280,6 +280,8 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
 
     MoveGenPhase phase = TTMove;
 
+    bool isCheck = board.isCheck(board.whiteToMove);
+    int standing_pat = evaluate(board,alpha,beta);
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -297,9 +299,15 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta) {
             board.applyPseudoLegalMove(move);
             int currentValue;
 
-            if (phase == Quiets && move_number > 5 && maxRecursionDepth > 5) {
-                // late move reduction
-                currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+            if (phase == Quiets && move_number > 5 && !isCheck) {
+                // late move reduction/pruning
+
+                if (maxRecursionDepth <= 3 && standing_pat < alpha - LAZY_EVAL_SAFETY_MARGIN) {
+                    currentValue = -quiscenceSearch(board,0,(-beta),(-alpha));
+                }
+                else {
+                    currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
+                }
                 //research at full depth if necessary
                 if (currentValue >= beta) {
                     currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha));
