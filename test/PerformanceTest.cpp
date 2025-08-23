@@ -19,6 +19,7 @@
 #include <Conversions.h>
 
 #include "EvaluationConstants.h"
+#include "Movepicking.h"
 
 std::array<int,Constants::MAX_RECURSION_DEPTH> nodes_at_depth = {};
 std::array<std::string,4> testFENs = {

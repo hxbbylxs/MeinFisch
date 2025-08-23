@@ -3,6 +3,8 @@ add_library(
             Engine.cpp
             EvaluationFunction.cpp
             Memory.cpp
+        Movepicking.cpp
+        Movepicking.h
 )
 
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
