@@ -59,7 +59,7 @@ void debugTest() {
 
 int testMinimax(int maxRecursionDepth, GameBoard & board) {
     nodes_at_depth[maxRecursionDepth]++;
-    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,-CHECKMATE_VALUE,CHECKMATE_VALUE);
+    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,-CHECKMATE_VALUE,CHECKMATE_VALUE,0);
     auto psm = getPseudoLegalMoves(board, board.whiteToMove,ALL);
 
     int plies = board.plies;
@@ -80,7 +80,7 @@ int testMinimax(int maxRecursionDepth, GameBoard & board) {
 
 int testNegamax(int maxRecursionDepth, GameBoard &board, int alpha, int beta) {
     nodes_at_depth[maxRecursionDepth]++;
-    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,alpha,beta);
+    if (maxRecursionDepth <= 0) return quiscenceSearch(board,maxRecursionDepth,alpha,beta,0);
     auto psm = getPseudoLegalMoves(board, board.whiteToMove,ALL);
     mvv_lva_MoveOrdering(psm);
 

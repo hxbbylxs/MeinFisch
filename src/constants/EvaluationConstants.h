@@ -11,7 +11,8 @@
 
 inline constexpr int CHECKMATE_VALUE = 100000;
 inline constexpr int LAZY_EVAL_SAFETY_MARGIN = 200;
-inline constexpr int FUTILITY_SAFETY_MARGIN = 100;
+inline constexpr int FUTILITY_BASE_SAFETY_MARGIN = 280;
+inline constexpr int FUTILITY_DEPTH_SAFETY_MARGIN = 100;
 
 inline constexpr int TEMPO_BONUS = 20;
 
