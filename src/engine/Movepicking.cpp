@@ -46,7 +46,7 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandid
 
 void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board) {
 
-    if (__builtin_popcountll(board.allPieces) < 14) {
+    if (false) {
         std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
      return getMoveScoreEndGame(a) > getMoveScoreEndGame(b);
  });

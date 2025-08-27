@@ -63,9 +63,8 @@ void clearTT() {
 
 // score is increased when a move causes a cutoff
 void increaseMoveScore(uint32_t move, int depth) {
-    int from = Constants::move_decoding_bitmasks[(move & Constants::MoveDecoding::FROM)>>4];
-    int to = Constants::move_decoding_bitmasks[(move & Constants::MoveDecoding::TO)>>14];
-    history_move_scores[from][to] = std::min(history_move_scores[from][to] + depth * depth,100'000);
+    auto mv = decodeMove(move);
+    history_move_scores[mv.from][mv.to] = std::min(history_move_scores[mv.from][mv.to] + depth * depth,100'000);
 }
 
 void initializeHistoryHeuristic() {
