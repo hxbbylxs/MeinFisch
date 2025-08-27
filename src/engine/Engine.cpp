@@ -55,7 +55,7 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
 
     std::thread timeGuard( startTimeLimit,timeLimit);
     auto start = std::chrono::high_resolution_clock::now();
-    auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/2));
+    auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/3));
 
     total_nodes_searched = 0;
 
