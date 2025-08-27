@@ -73,11 +73,12 @@ int getGamePhaseScore(GameBoard const &board) {
 void evaluateKing(GameBoard const &board, int & mg_evaluation, int & eg_evaluation) {
     int black_king_position = __builtin_ctzll(board.pieces[Constants::Piece::BLACK_KING]);
     int white_king_position = __builtin_ctzll(board.pieces[Constants::Piece::WHITE_KING]);
-    uint64_t pawns_ahead_black_king = KING_PAWN_SHIELD_BITMASK[black_king_position];
-    uint64_t pawns_ahead_white_king = KING_PAWN_SHIELD_BITMASK[white_king_position];
 
-    int num_protectors_black = __builtin_popcountll(board.pieces[Constants::Piece::BLACK_PAWN] & pawns_ahead_black_king);
-    int num_protectors_white = __builtin_popcountll(board.pieces[Constants::Piece::WHITE_PAWN] & pawns_ahead_white_king);
+    uint64_t pawns_directly_ahead_black_king = board.pieces[Constants::Piece::BLACK_PAWN] & KING_PAWN_SHIELD_BITMASK[black_king_position];
+    uint64_t pawns_directly_ahead_white_king = board.pieces[Constants::Piece::WHITE_PAWN] & KING_PAWN_SHIELD_BITMASK[white_king_position];
+
+    int num_protectors_black = __builtin_popcountll(pawns_directly_ahead_black_king);
+    int num_protectors_white = __builtin_popcountll(pawns_directly_ahead_white_king);
 
     // bonus for every pawn on the three squares ahead of the king
     mg_evaluation += PAWN_SHIELD*num_protectors_white - PAWN_SHIELD*num_protectors_black;
@@ -92,6 +93,15 @@ void evaluateKing(GameBoard const &board, int & mg_evaluation, int & eg_evaluati
     mg_evaluation -= PST_MG_BLACK_KING[black_king_position];
     eg_evaluation += PST_EG_WHITE_KING[white_king_position];
     eg_evaluation -= PST_EG_BLACK_KING[black_king_position];
+
+    // punish open lines to the king
+    uint64_t if_king_moves_like_queen = getQueenAttackBits(white_king_position,board.allPieces);
+    int num_reachable_squares = __builtin_popcountll(if_king_moves_like_queen);
+    mg_evaluation -= num_reachable_squares*num_reachable_squares/5;
+
+    uint64_t if_black_king_moves_like_queen = getQueenAttackBits(black_king_position,board.allPieces);
+    num_reachable_squares = __builtin_popcountll(if_black_king_moves_like_queen);
+    mg_evaluation += num_reachable_squares*num_reachable_squares/5;
 
     // Squares attacked around the king are evaluated as pressure in the evaluatePiece functions
     // due to performance, although they would belong here.
@@ -148,8 +158,8 @@ void evaluatePawns(GameBoard const &board, int & mg_evaluation, int & eg_evaluat
 
         // passed, doubled, isolated
         if (!(PASSED_PAWN_BITMASK[1][position] & board.pieces[Constants::Piece::WHITE_PAWN])) {
-            mg_evaluation -= PAWN_PASSED_MG[8-(position/8)];
-            eg_evaluation -= PAWN_PASSED_EG[8-(position/8)];
+            mg_evaluation -= PAWN_PASSED_MG[7-(position/8)];
+            eg_evaluation -= PAWN_PASSED_EG[7-(position/8)];
         }
         if (!(ISOLATED_PAWN_BITMASK[position&7] & board.pieces[Constants::Piece::BLACK_PAWN])) {
             anyGamePhaseEvaluation -= PAWN_ISOLATED;

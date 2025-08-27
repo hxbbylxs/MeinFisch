@@ -304,4 +304,20 @@ inline constexpr std::array<int,64> PST_EG_BLACK_ROOK = {
         return result;
     }();
 
+    inline constexpr std::array<uint64_t,64> KING_LARGE_ZONE_BITMASK = []() {
+        std::array<uint64_t,64> result = {};
+        for (int x_king = 0; x_king < 8; x_king++) {
+            for (int y_king = 0; y_king < 8; y_king++) {
+                for (int x_pos = 0; x_pos < 8; x_pos++) {
+                    for (int y_pos = 0; y_pos < 8; y_pos++) {
+                        if (abs(x_king - x_pos) <= 2 && abs(y_king - y_pos) <= 2) {
+                            result[8*x_king + y_king] |= 1ULL << (8*x_pos + y_pos);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }();
+
 #endif //EVALUATIONCONSTANTS_H
