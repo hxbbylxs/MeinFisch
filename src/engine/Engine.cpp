@@ -50,7 +50,7 @@ std::array<int,5> cutoffs = {};
 
 
 std::atomic<bool> timeIsUp(false);
-pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
+pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
     timeIsUp = false;
     std::thread timeGuard( startTimeLimit,timeLimit);
     auto start = std::chrono::high_resolution_clock::now();
@@ -61,7 +61,7 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
     pair<uint32_t,int> currentBestMove = {};
     pair<uint32_t,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
                                                         // if not timeIsUp in the next iteration we know that the last value is usable
-    for (int depth = 0; depth <= 30; depth++) {
+    for (int depth = 0; depth <= max_depth; depth++) {
         if (timeIsUp) break;
 
         //debug
@@ -85,16 +85,17 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit) {
         std::cout << "LMR Attempts: " << lmr_attempts << std::endl;
         std::cout << "LMR Researches: " << lmr_researches << std::endl;*/
 
+        decreaseAllMoveScores();
 
-        // Not worth starting a new depth
-        if (!timeIsUp && dontStartNewDepthTime-std::chrono::high_resolution_clock::now() < std::chrono::milliseconds(0)) {
+        // Not worth starting a new depth or last depth reached
+        if (!timeIsUp && (depth == max_depth || dontStartNewDepthTime-std::chrono::high_resolution_clock::now() < std::chrono::milliseconds(0))) {
             currentBestMove = incompleteMoveCalculation;
             timeIsUp = true;
             break;
         }
-        decreaseAllMoveScores();
-    }
 
+    }
+    if (currentBestMove.first == 0) currentBestMove = incompleteMoveCalculation; // in case timeIsUp after depth 0, currentBestMove is invalid
 
     timeGuard.join();
     return currentBestMove;

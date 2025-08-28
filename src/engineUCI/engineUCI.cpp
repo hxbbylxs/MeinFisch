@@ -111,12 +111,13 @@ std::string engineUCI::calcBestMove(std::string const & go) {
     int winc  = uciParams.count("winc")  ? uciParams["winc"]  : 0;
     int binc  = uciParams.count("binc")  ? uciParams["binc"]  : 0;
     int movestogo = uciParams.count("movestogo") ? uciParams["movestogo"] : -1;
+    int max_depth = uciParams.count("depth") ? uciParams["depth"] : 30;
 
 
     int estimated_remaining_moves = std::max(10,60-global_board.moves);
     int searchTime = std::min(15000.0,global_board.whiteToMove ? (2*wtime/estimated_remaining_moves + 0.8*winc) : (2*btime/estimated_remaining_moves + 0.8*binc));
 
-    auto res = iterativeDeepening(global_board, searchTime);
+    auto res = iterativeDeepening(global_board, searchTime, max_depth);
 
     return "bestmove "+convertMoveToOutput(res.first);
 }
