@@ -17,6 +17,8 @@
 #include <Output.h>
 #include <Memory.h>
 
+#include "Movepicking.h"
+
 //4k2r/Ppq5/8/R2bpP2/n5P1/3r1B1N/1pP1Q3/R3K3 w Qk e6 0 1
 // testing only this particular FEN
 void testMoveGeneration() {
@@ -153,4 +155,14 @@ void testUnmakeMove() {
     }
 
     std::cout << "Test passed: unmaking moves" << std::endl;
+}
+
+void testSEE() {
+    GameBoard board = convertFENtoGameBoard("rnbqkb1r/pppppp1p/5n2/6p1/5P2/7N/PPPPP1PP/RNBQKB1R w KQkq - 0 1");
+    printGameBoard(board);
+    auto psm = getPseudoLegalMoves(board,board.whiteToMove,ALL);
+    for (auto move : psm) {
+        printCompleteMove(decodeMove(move));
+        std::cout << "SEE: " << static_exchange_evaluation(move,board) << std::endl;
+    }
 }

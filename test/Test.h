@@ -11,6 +11,7 @@ void testLegalMoveCheck();
 void testBlackBoxEngine();
 void testZobristHashUpdate();
 void testUnmakeMove();
+void testSEE();
 
 
 #endif //TEST_H

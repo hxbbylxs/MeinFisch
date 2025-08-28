@@ -1,11 +1,12 @@
 
 #include <chrono>
+#include <Conversions.h>
 #include <iostream>
 #include <Memory.h>
 #include <Output.h>
 #include <PerformanceTest.h>
 
-
+#include "Movepicking.h"
 #include "EngineUCI.h"
 
 #include "Constants.h"
@@ -20,6 +21,7 @@ int main() {
     initializeSliderAttackBitMask(); //TODO at compiletime
     initializeHistoryHeuristic();
 
+    //testSEE();
 
     engineUCI engine = engineUCI();
     std::string input;
