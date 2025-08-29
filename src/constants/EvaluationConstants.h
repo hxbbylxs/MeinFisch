@@ -23,30 +23,42 @@ inline constexpr int PAWN_DOUBLED = -10;
 inline constexpr int PAWN_ISOLATED = -25;
 inline constexpr std::array<int,8> PAWN_PASSED_EG = {0,150,140,120,50,20,0,0};
 inline constexpr std::array<int,8> PAWN_PASSED_MG = {0,70,60,50,40,40,20,0};
+inline constexpr int PAWN_IN_SMALL_KING_ZONE = 5;
+inline constexpr int PAWN_IN_LARGE_KING_ZONE = 2;
 
 inline constexpr int KNIGHT_BONUS_PER_SQUARE = 2;
+inline constexpr int KNIGHT_IN_SMALL_KING_ZONE = 10;
+inline constexpr int KNIGHT_IN_LARGE_KING_ZONE = 5;
 
 inline constexpr int BISHOP_BONUS_PER_SQUARE = 1;
 inline constexpr int BISHOP_BONUS_PER_CENTER_SQUARE = 2;
 inline constexpr int BISHOP_XRAY = 15;
 inline constexpr int BISHOP_PAIR = 50;
+inline constexpr int BISHOP_IN_SMALL_KING_ZONE = 10;
+inline constexpr int BISHOP_IN_LARGE_KING_ZONE = 5;
 
 inline constexpr int ROOK_ON_OPEN_LINE = 40;
 inline constexpr int ROOK_ON_HALF_OPEN_LINE = 20;
 inline constexpr int ROOK_XRAY = 15;
-inline constexpr int ROOK_CONNECTED = 10;
-inline constexpr int ROOK_IN_KING_ZONE = 20;
+inline constexpr int ROOKS_CONNECTED = 20;
+inline constexpr int ROOK_IN_SMALL_KING_ZONE = 20;
+inline constexpr int ROOK_IN_LARGE_KING_ZONE = 10;
 
-inline constexpr int QUEEN_IN_KING_ZONE = 30;
+inline constexpr int QUEEN_IN_SMALL_KING_ZONE = 30;
+inline constexpr int QUEEN_IN_LARGE_KING_ZONE = 20;
 inline constexpr int QUEEN_XRAY = 15;
 
-inline constexpr int PAWN_ATTACKS_KING_ZONE = 2;
-inline constexpr int KNIGHT_ATTACKS_KING_ZONE = 3;
-inline constexpr int BISHOP_ATTACKS_KING_ZONE = 4;
-inline constexpr int ROOK_ATTACKS_KING_ZONE = 5;
-inline constexpr int QUEEN_ATTACKS_KING_ZONE = 9;
+inline constexpr int PAWN_ATTACKS_SMALL_KING_ZONE = 2;
+inline constexpr int KNIGHT_ATTACKS_SMALL_KING_ZONE = 3;
+inline constexpr int BISHOP_ATTACKS_SMALL_KING_ZONE = 4;
+inline constexpr int ROOK_ATTACKS_SMALL_KING_ZONE = 5;
+inline constexpr int QUEEN_ATTACKS_SMALL_KING_ZONE = 9;
 
-inline constexpr int KING_ZONE_ATTACKER_EXP_BASE = 3; // 3^num_attackers
+inline constexpr int PAWN_ATTACKS_LARGE_KING_ZONE = 1;
+inline constexpr int KNIGHT_ATTACKS_LARGE_KING_ZONE = 2;
+inline constexpr int BISHOP_ATTACKS_LARGE_KING_ZONE = 2;
+inline constexpr int ROOK_ATTACKS_LARGE_KING_ZONE = 3;
+inline constexpr int QUEEN_ATTACKS_LARGE_KING_ZONE = 3;
 
 inline constexpr uint64_t PST_CENTER_RING = 3ULL << 19 | 15ULL << 26 | 15ULL << 34 | 3ULL << 43;
 inline constexpr uint64_t PST_CENTER_SQUARE = 3ULL << 27 | 3ULL << 35;
