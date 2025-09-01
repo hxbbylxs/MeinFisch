@@ -39,10 +39,17 @@ int evaluate(GameBoard const & board, int alpha, int beta) {
     evaluateRooks(board, eval_info);
     evaluateQueen(board, eval_info);
 
+    // Hanging Pieces
     int num_hanging_pieces = (__builtin_popcountll(eval_info.white_pieces) - __builtin_popcountll(eval_info.whites_defended_pieces));
-    eval_info.mg_evaluation -= num_hanging_pieces*num_hanging_pieces;
+    eval_info.mg_evaluation += HANGING_PIECE*num_hanging_pieces;
     num_hanging_pieces = (__builtin_popcountll(eval_info.black_pieces) - __builtin_popcountll(eval_info.blacks_defended_pieces));
-    eval_info.mg_evaluation -= num_hanging_pieces*num_hanging_pieces;
+    eval_info.mg_evaluation -= HANGING_PIECE*num_hanging_pieces;
+
+    // Multiple Attacks on King zone
+    eval_info.mg_evaluation += eval_info.num_attackers_black_small_zone*eval_info.num_attackers_black_small_zone;
+    eval_info.eg_evaluation += eval_info.num_attackers_black_small_zone*eval_info.num_attackers_black_small_zone;
+    eval_info.mg_evaluation -= eval_info.num_attackers_white_small_zone*eval_info.num_attackers_white_small_zone;
+    eval_info.eg_evaluation -= eval_info.num_attackers_white_small_zone*eval_info.num_attackers_white_small_zone;
 
     // linear interpolation between middle game and end game
     evaluation = (game_phase_score*eval_info.mg_evaluation + (24-game_phase_score)*eval_info.eg_evaluation)/24;
@@ -97,18 +104,18 @@ void evaluateKing(GameBoard const &board, EvalInfo & eval_info) {
     eval_info.eg_evaluation -= PST_EG_BLACK_KING[black_king_position];
 
     // punish open lines to the king
-    uint64_t if_king_moves_like_queen = getQueenAttackBits(white_king_position,board.allPieces);
+    /*uint64_t if_king_moves_like_queen = getQueenAttackBits(white_king_position,board.allPieces);
     int num_reachable_squares = __builtin_popcountll(if_king_moves_like_queen);
-    eval_info.mg_evaluation -= num_reachable_squares*num_reachable_squares/5;
+    eval_info.mg_evaluation -= num_reachable_squares;
 
     uint64_t if_black_king_moves_like_queen = getQueenAttackBits(black_king_position,board.allPieces);
     num_reachable_squares = __builtin_popcountll(if_black_king_moves_like_queen);
-    eval_info.mg_evaluation += num_reachable_squares*num_reachable_squares/5;
+    eval_info.mg_evaluation += num_reachable_squares;*/
 
     // Squares attacked around the king are evaluated as pressure in the evaluatePiece functions
     // due to performance, although they would belong here.
 
-    //black pieces in whites small zone
+    /*//black pieces in whites small zone
     int num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_QUEEN]);
     eval_info.mg_evaluation -= num_pieces_in_zone*QUEEN_IN_SMALL_KING_ZONE;
     num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_ROOK]);
@@ -154,7 +161,12 @@ void evaluateKing(GameBoard const &board, EvalInfo & eval_info) {
     num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_KNIGHT]);
     eval_info.mg_evaluation += num_pieces_in_zone*KNIGHT_IN_LARGE_KING_ZONE;
     num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_PAWN]);
-    eval_info.mg_evaluation += num_pieces_in_zone*PAWN_IN_LARGE_KING_ZONE;
+    eval_info.mg_evaluation += num_pieces_in_zone*PAWN_IN_LARGE_KING_ZONE;*/
+
+    if (eval_info.white_king_zone_small & eval_info.black_king_zone_small) {
+        eval_info.num_attackers_black_small_zone++;
+        eval_info.num_attackers_white_small_zone++;
+    }
 }
 
 // modifies the values passed by reference
@@ -176,6 +188,7 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += PAWN_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.black_king_zone_small) {
+                eval_info.num_attackers_black_small_zone++;
                 any_game_phase_evaluation += PAWN_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_small & attacked_squares);
             }
         }
@@ -203,6 +216,7 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.white_king_zone_large) {
             any_game_phase_evaluation -= PAWN_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.white_king_zone_small) {
+                eval_info.num_attackers_white_small_zone++;
                 any_game_phase_evaluation -= PAWN_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }
@@ -243,6 +257,7 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += KNIGHT_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.black_king_zone_small) {
+                eval_info.num_attackers_black_small_zone++;
                 any_game_phase_evaluation += KNIGHT_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_small & attacked_squares);
             }
         }
@@ -264,6 +279,7 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.white_king_zone_large) {
             any_game_phase_evaluation -= KNIGHT_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.white_king_zone_small) {
+                eval_info.num_attackers_white_small_zone++;
                 any_game_phase_evaluation -= KNIGHT_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }
@@ -301,6 +317,7 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += BISHOP_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.black_king_zone_small) {
+                eval_info.num_attackers_black_small_zone++;
                 any_game_phase_evaluation += BISHOP_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_small & attacked_squares);
             }
         }
@@ -326,6 +343,7 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.white_king_zone_large) {
             any_game_phase_evaluation -= BISHOP_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.white_king_zone_small) {
+                eval_info.num_attackers_white_small_zone++;
                 any_game_phase_evaluation -= BISHOP_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }
@@ -369,6 +387,7 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += ROOK_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.black_king_zone_small) {
+                eval_info.num_attackers_black_small_zone++;
                 any_game_phase_evaluation += ROOK_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_small & attacked_squares);
             }
         }
@@ -396,6 +415,7 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.white_king_zone_large) {
             any_game_phase_evaluation -= ROOK_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.white_king_zone_small) {
+                eval_info.num_attackers_white_small_zone++;
                 any_game_phase_evaluation -= ROOK_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }
@@ -403,18 +423,20 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
         // TODO xray
 
         // PST
-        eval_info.mg_evaluation -= PST_MG_WHITE_ROOK[position];
-        eval_info.eg_evaluation -= PST_EG_WHITE_ROOK[position];
+        eval_info.mg_evaluation -= PST_MG_BLACK_ROOK[position];
+        eval_info.eg_evaluation -= PST_EG_BLACK_ROOK[position];
     });
 
     eval_info.squares_attacked_by_less_valuable_white_pieces |= white_rooks_attacked_squares;
     eval_info.squares_attacked_by_less_valuable_black_pieces |= black_rooks_attacked_squares;
 
     if (__builtin_popcountll(board.pieces[Constants::WHITE_ROOK] & white_rooks_attacked_squares)) {
-        any_game_phase_evaluation += ROOKS_CONNECTED;
+        eval_info.mg_evaluation += ROOKS_MG_CONNECTED;
+        eval_info.eg_evaluation += ROOKS_EG_CONNECTED;
     }
     if (__builtin_popcountll(board.pieces[Constants::BLACK_ROOK] & black_rooks_attacked_squares)) {
-        any_game_phase_evaluation -= ROOKS_CONNECTED;
+        eval_info.mg_evaluation -= ROOKS_MG_CONNECTED;
+        eval_info.eg_evaluation -= ROOKS_EG_CONNECTED;
     }
 
     eval_info.mg_evaluation += any_game_phase_evaluation;
@@ -436,6 +458,7 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += QUEEN_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.black_king_zone_small) {
+                eval_info.num_attackers_black_small_zone++;
                 any_game_phase_evaluation += QUEEN_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_small & attacked_squares);
             }
         }
@@ -463,6 +486,7 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
         if (attacked_squares & eval_info.white_king_zone_large) {
             any_game_phase_evaluation -= QUEEN_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_large & attacked_squares);
             if (attacked_squares & eval_info.white_king_zone_small) {
+                eval_info.num_attackers_white_small_zone++;
                 any_game_phase_evaluation -= QUEEN_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }

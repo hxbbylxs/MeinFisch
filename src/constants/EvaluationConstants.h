@@ -17,16 +17,16 @@ inline constexpr int FUTILITY_DEPTH_SAFETY_MARGIN = 100;
 inline constexpr int TEMPO_BONUS = 20;
 
 inline constexpr int PAWN_SHIELD = 5;
-inline constexpr int PAWN_AHEAD_KING_MISSING = -150;
-inline constexpr int PAWN_PROTECTS_OWN_PIECE = 10;
-inline constexpr int PAWN_DOUBLED = -10;
-inline constexpr int PAWN_ISOLATED = -25;
+inline constexpr int PAWN_AHEAD_KING_MISSING = -40;
+//inline constexpr int PAWN_PROTECTS_OWN_PIECE = 10;
+inline constexpr int PAWN_DOUBLED = -7; // will be counted twice (each pawn sees another pawn on the same line)
+inline constexpr int PAWN_ISOLATED = -15;
 inline constexpr std::array<int,8> PAWN_PASSED_EG = {0,150,140,120,50,20,0,0};
 inline constexpr std::array<int,8> PAWN_PASSED_MG = {0,70,60,50,40,40,20,0};
 inline constexpr int PAWN_IN_SMALL_KING_ZONE = 5;
 inline constexpr int PAWN_IN_LARGE_KING_ZONE = 2;
 
-inline constexpr int KNIGHT_BONUS_PER_SQUARE = 2;
+inline constexpr int KNIGHT_BONUS_PER_SQUARE = 3;
 inline constexpr int KNIGHT_IN_SMALL_KING_ZONE = 10;
 inline constexpr int KNIGHT_IN_LARGE_KING_ZONE = 5;
 
@@ -40,7 +40,8 @@ inline constexpr int BISHOP_IN_LARGE_KING_ZONE = 5;
 inline constexpr int ROOK_ON_OPEN_LINE = 40;
 inline constexpr int ROOK_ON_HALF_OPEN_LINE = 20;
 inline constexpr int ROOK_XRAY = 15;
-inline constexpr int ROOKS_CONNECTED = 20;
+inline constexpr int ROOKS_EG_CONNECTED = 30;
+inline constexpr int ROOKS_MG_CONNECTED = 10;
 inline constexpr int ROOK_IN_SMALL_KING_ZONE = 20;
 inline constexpr int ROOK_IN_LARGE_KING_ZONE = 10;
 
@@ -59,6 +60,8 @@ inline constexpr int KNIGHT_ATTACKS_LARGE_KING_ZONE = 2;
 inline constexpr int BISHOP_ATTACKS_LARGE_KING_ZONE = 2;
 inline constexpr int ROOK_ATTACKS_LARGE_KING_ZONE = 3;
 inline constexpr int QUEEN_ATTACKS_LARGE_KING_ZONE = 3;
+
+inline constexpr int HANGING_PIECE = -10;
 
 inline constexpr uint64_t PST_CENTER_RING = 3ULL << 19 | 15ULL << 26 | 15ULL << 34 | 3ULL << 43;
 inline constexpr uint64_t PST_CENTER_SQUARE = 3ULL << 27 | 3ULL << 35;
@@ -266,7 +269,7 @@ inline constexpr std::array<int,64> PST_EG_BLACK_ROOK = {
     inline constexpr std::array<uint64_t,8> LINE_BITMASKS = []() {
         std::array<uint64_t,8> result = {};
         for (int i = 0; i < 64; i++) {
-            result[i%8] = 1ULL << i;
+            result[i%8] |= 1ULL << i;
         }
         return result;
     }();
@@ -304,13 +307,27 @@ inline constexpr std::array<int,64> PST_EG_BLACK_ROOK = {
         std::array<uint64_t,64> result = {};
         for (int i = 0; i < 32; i++) {
             result[i] |= 1ULL << i+8;
-            if (i % Constants::BOARD_SIZE != 0) result[i] |= 1ULL << i+7;
-            if (i % Constants::BOARD_SIZE != Constants::BOARD_SIZE-1) result[i] |= 1ULL << i+9;
+            result[i] |= 1ULL << i+16;
+            if (i % Constants::BOARD_SIZE != 0) {
+                result[i] |= 1ULL << i+7;
+                result[i] |= 1ULL << i+15;
+            }
+            if (i % Constants::BOARD_SIZE != Constants::BOARD_SIZE-1) {
+                result[i] |= 1ULL << i+9;
+                result[i] |= 1ULL << i+17;
+            }
         }
         for (int i = 32; i < 64; i++) {
             result[i] |= 1ULL << i-8;
-            if (i % Constants::BOARD_SIZE != 0) result[i] |= 1ULL << i-9;
-            if (i % Constants::BOARD_SIZE != Constants::BOARD_SIZE-1) result[i] |= 1ULL << i-7;
+            result[i] |= 1ULL << i-16;
+            if (i % Constants::BOARD_SIZE != 0) {
+                result[i] |= 1ULL << i-9;
+                result[i] |= 1ULL << i-17;
+            }
+            if (i % Constants::BOARD_SIZE != Constants::BOARD_SIZE-1) {
+                result[i] |= 1ULL << i-7;
+                result[i] |= 1ULL << i-15;
+            }
         }
 
         return result;

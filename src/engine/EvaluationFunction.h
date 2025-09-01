@@ -20,6 +20,8 @@ struct EvalInfo {
     uint64_t blacks_defended_pieces = 0;
     uint64_t squares_attacked_by_less_valuable_white_pieces = 0;
     uint64_t squares_attacked_by_less_valuable_black_pieces = 0;
+    int num_attackers_white_small_zone = 0;
+    int num_attackers_black_small_zone = 0;
 };
 
 int evaluate(GameBoard const & board, int alpha, int beta);
