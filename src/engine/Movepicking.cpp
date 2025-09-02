@@ -149,15 +149,10 @@ int static_exchange_evaluation(uint32_t move, GameBoard & board) {
 
 uint32_t getCheapestAttackMove(GameBoard const &board, bool attacker_is_white, int square, Constants::Piece piece_on_square) {
 
-    uint64_t ownPieces = attacker_is_white ? board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN]
-                                        | board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::WHITE_BISHOP]
-                                        | board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::WHITE_PAWN]
-                                        : board.pieces[Constants::BLACK_KING] | board.pieces[Constants::BLACK_QUEEN]
-                                        | board.pieces[Constants::BLACK_ROOK] | board.pieces[Constants::BLACK_BISHOP]
-                                        | board.pieces[Constants::BLACK_KNIGHT] | board.pieces[Constants::BLACK_PAWN];
-    uint64_t enemyPieces = board.allPieces & ~ownPieces;
+    uint64_t enemy_pieces = board.whiteToMove ? board.black_pieces : board.white_pieces;
+    uint64_t all_pieces = board.white_pieces | board.black_pieces;
 
-    if (!(enemyPieces & (1ULL << square))) return 0; // no enemy piece on this square
+    if (!(enemy_pieces & (1ULL << square))) return 0; // no enemy piece on this square
 
     //Is square attacked by pawns
     uint64_t pawn_attacker = pawnCaptureBitMask[attacker_is_white][square] & (board.pieces[attacker_is_white?Constants::Piece::WHITE_PAWN:Constants::Piece::BLACK_PAWN]);
@@ -171,19 +166,19 @@ uint32_t getCheapestAttackMove(GameBoard const &board, bool attacker_is_white, i
         return (attacker_is_white ? Constants::WHITE_KNIGHT : Constants::BLACK_KNIGHT) | from << 4 | piece_on_square << 10 | square << 14;
     }
 
-    uint64_t bishop_attacker = getBishopAttackBits(square,board.allPieces) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_BISHOP:Constants::Piece::BLACK_BISHOP]);
+    uint64_t bishop_attacker = getBishopAttackBits(square,all_pieces) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_BISHOP:Constants::Piece::BLACK_BISHOP]);
     if (bishop_attacker) {
         int from = __builtin_ctzll(bishop_attacker);
         return (attacker_is_white ? Constants::WHITE_BISHOP : Constants::BLACK_BISHOP) | from << 4 | piece_on_square << 10 | square << 14;
     }
 
-    uint64_t rook_attacker = getRookAttackBits(square,board.allPieces) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_ROOK:Constants::Piece::BLACK_ROOK]);
+    uint64_t rook_attacker = getRookAttackBits(square,all_pieces) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_ROOK:Constants::Piece::BLACK_ROOK]);
     if (rook_attacker) {
         int from = __builtin_ctzll(rook_attacker);
         return (attacker_is_white ? Constants::WHITE_ROOK : Constants::BLACK_ROOK) | from << 4 | piece_on_square << 10 | square << 14;
     }
 
-    uint64_t queen_attacker = (getBishopAttackBits(square,board.allPieces) | getRookAttackBits(square,board.allPieces)) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_QUEEN:Constants::Piece::BLACK_QUEEN]);
+    uint64_t queen_attacker = (getBishopAttackBits(square,all_pieces) | getRookAttackBits(square,all_pieces)) & (board.pieces[attacker_is_white?Constants::Piece::WHITE_QUEEN:Constants::Piece::BLACK_QUEEN]);
     if (queen_attacker) {
         int from = __builtin_ctzll(queen_attacker);
         return (attacker_is_white ? Constants::WHITE_QUEEN : Constants::BLACK_QUEEN) | from << 4 | piece_on_square << 10 | square << 14;

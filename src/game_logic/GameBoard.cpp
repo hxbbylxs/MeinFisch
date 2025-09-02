@@ -31,10 +31,15 @@ GameBoard::GameBoard(
     plies(plies), moves(moves),
     zobristHash(0)
 {
-    this->allPieces = 0;
-    for (uint64_t piece : pieces) {
-        this->allPieces |= piece;
-    }
+    // construct white_pieces and black_pieces from pieces
+    this->white_pieces = pieces[Constants::WHITE_KING] | pieces[Constants::WHITE_QUEEN]
+                        | pieces[Constants::WHITE_ROOK] | pieces[Constants::WHITE_BISHOP]
+                        | pieces[Constants::WHITE_KNIGHT] | pieces[Constants::WHITE_PAWN];
+    this->black_pieces = pieces[Constants::BLACK_KING] | pieces[Constants::BLACK_QUEEN]
+                        | pieces[Constants::BLACK_ROOK] | pieces[Constants::BLACK_BISHOP]
+                        | pieces[Constants::BLACK_KNIGHT] | pieces[Constants::BLACK_PAWN];
+
+    //initialize zobrist hash
     for (int i = 1; i < 13; i++) {
         uint64_t piece = pieces[i];
         while (piece != 0) {
@@ -57,10 +62,14 @@ GameBoard::GameBoard() :
     plies(0), moves(1),
     zobristHash(0)
     {
-        this->allPieces = 0;
-        for (uint64_t piece : pieces) {
-            this->allPieces |= piece;
-        }
+    this->white_pieces = pieces[Constants::WHITE_KING] | pieces[Constants::WHITE_QUEEN]
+                        | pieces[Constants::WHITE_ROOK] | pieces[Constants::WHITE_BISHOP]
+                        | pieces[Constants::WHITE_KNIGHT] | pieces[Constants::WHITE_PAWN];
+    this->black_pieces = pieces[Constants::BLACK_KING] | pieces[Constants::BLACK_QUEEN]
+                        | pieces[Constants::BLACK_ROOK] | pieces[Constants::BLACK_BISHOP]
+                        | pieces[Constants::BLACK_KNIGHT] | pieces[Constants::BLACK_PAWN];
+
+    // initialiue zobrist hash
         for (int i = 1; i < 13; i++) {
             uint64_t piece = pieces[i];
             while (piece != 0) {
@@ -92,25 +101,32 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
     // remove piece from its square
     pieces[mv.piece] &= ~(1ULL << mv.from);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.from][mv.piece];
+    if (whiteToMove) white_pieces &= ~(1ULL << mv.from);
+    else black_pieces &= ~(1ULL << mv.from);
 
     // put piece on new square
     pieces[mv.piece] |= (1ULL << mv.to);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.piece];
+    if (whiteToMove) white_pieces |= (1ULL << mv.to);
+    else black_pieces |= (1ULL << mv.to);
 
-    // remove captured piece (en passant is handled later, nothing bad happens here in en passant case)
+    // remove captured piece (en passant is handled later, zobrist hash change has to be unmade then)
     pieces[mv.captured_piece] &= ~(1ULL << mv.to);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
-
-    allPieces &= ~(1ULL << mv.from);
-    allPieces |= (1ULL << mv.to);
+    if (whiteToMove) black_pieces &= ~(1ULL << mv.to);
+    else white_pieces &= ~(1ULL << mv.to);
 
     // adjust captured piece in en passant case
     if (mv.to == enPassant && mv.captured_piece != Constants::Piece::NONE) {
+        // unmake previous changes because captured pawn is not standing on mv.to
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
         int offset = whiteToMove ? 8 : -8;
+        //remove pawn captured pawn from the square above/below
         pieces[mv.captured_piece] &= ~(1ULL << mv.to+offset);
+        if (whiteToMove) black_pieces &= ~(1ULL << mv.to+offset);
+        else white_pieces &= ~(1ULL << mv.to+offset);
+
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to+offset][mv.captured_piece];
-        allPieces &= ~(1ULL << mv.to+offset);
     }
 
     // reset old en passant
@@ -154,19 +170,24 @@ void GameBoard::handlePawnSpecialCases(Move const & mv) {
 }
 
 void GameBoard::moveRookForCastle(Constants::Castle castle, bool unmake) {
-    allPieces &= ~(castle_rook_positions[castle][unmake]);
-    allPieces |= (castle_rook_positions[castle][!unmake]);
+
     if (castle == Constants::Castle::WHITE_KING_SIDE_CASTLE || castle == Constants::Castle::WHITE_QUEEN_SIDE_CASTLE) {
+        //case white castles
         pieces[Constants::Piece::WHITE_ROOK] &= ~(castle_rook_positions[castle][unmake]);
         pieces[Constants::Piece::WHITE_ROOK] |= (castle_rook_positions[castle][!unmake]);
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][unmake])][Constants::Piece::WHITE_ROOK];
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][!unmake])][Constants::Piece::WHITE_ROOK];
+        white_pieces &= ~(castle_rook_positions[castle][unmake]);
+        white_pieces|= (castle_rook_positions[castle][!unmake]);
 
     } else {
+        //case black castles
         pieces[Constants::Piece::BLACK_ROOK] &= ~(castle_rook_positions[castle][unmake]);
         pieces[Constants::Piece::BLACK_ROOK] |= (castle_rook_positions[castle][!unmake]);
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][unmake])][Constants::Piece::BLACK_ROOK];
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][!unmake])][Constants::Piece::BLACK_ROOK];
+        black_pieces &= ~(castle_rook_positions[castle][unmake]);
+        black_pieces |= (castle_rook_positions[castle][!unmake]);
     }
 }
 
@@ -216,21 +237,25 @@ void GameBoard::unmakeMove(uint32_t move, int enPassant_, std::array<bool, 5> ca
     if (mv.pawn_promote_to != Constants::Piece::NONE) {
         pieces[mv.pawn_promote_to] &= ~(1ULL << mv.to);
     }
-    allPieces &= ~(1ULL << mv.to);
+    if (whiteToMove) black_pieces &= ~(1ULL << mv.to);
+    else white_pieces &= ~(1ULL << mv.to);
 
     // add piece to the original square
     pieces[mv.piece] |= (1ULL << mv.from);
-    allPieces |= (1ULL << mv.from);
+    if (whiteToMove) black_pieces |= (1ULL << mv.from);
+    else white_pieces |= (1ULL << mv.from);
 
     // put captured piece back on the target square
     if (mv.captured_piece != Constants::Piece::NONE) {
         if (enPassant_ == mv.to) {
             int offset = whiteToMove ? -8 : 8;
             pieces[mv.captured_piece] |= (1ULL << mv.to+offset);
-            allPieces |= (1ULL << mv.to+offset);
+            if (whiteToMove) white_pieces |= (1ULL << mv.to+offset);
+            else black_pieces |= (1ULL << mv.to+offset);
         } else {
             pieces[mv.captured_piece] |= (1ULL << mv.to);
-            allPieces |= (1ULL << mv.to);
+            if (whiteToMove) white_pieces |= (1ULL << mv.to);
+            else black_pieces |= (1ULL << mv.to);
         }
     }
     if (mv.castle) moveRookForCastle (mv.castle,true);
@@ -258,7 +283,7 @@ bool GameBoard::operator==(GameBoard const & other) const {
     for (int i = 1; i < 5; i++) {
         if (castleInformation[i] != other.castleInformation[i]) return false;
     }
-    return enPassant == other.enPassant && allPieces == other.allPieces && zobristHash == other.zobristHash;
+    return enPassant == other.enPassant && white_pieces == other.white_pieces && black_pieces == other.black_pieces && zobristHash == other.zobristHash;
 }
 
 // board positions for move repetition check

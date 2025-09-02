@@ -214,7 +214,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
 
     bool isCheck = board.isCheck(board.whiteToMove);
     if (isCheck) maxRecursionDepth++; // check extension
-    int num_pieces = __builtin_popcountll(board.allPieces);
+    int num_pieces = __builtin_popcountll(board.white_pieces | board.black_pieces);
 
 
     while (phase != Done) {

@@ -7,6 +7,8 @@
 
 #include <cstdint>
 #include <vector>
+
+#include "../io/Output.h"
 using std::vector;
 #include <stdexcept>
 
@@ -15,13 +17,8 @@ vector<uint32_t> getPseudoLegalMoves(GameBoard const & board, bool forWhite, Mov
     vector<uint32_t> pseudoLegalMoves;
     pseudoLegalMoves.reserve(50);
 
-    uint64_t ownPieces = forWhite ? board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN]
-                                            | board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::WHITE_BISHOP]
-                                            | board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::WHITE_PAWN]
-                                            : board.pieces[Constants::BLACK_KING] | board.pieces[Constants::BLACK_QUEEN]
-                                            | board.pieces[Constants::BLACK_ROOK] | board.pieces[Constants::BLACK_BISHOP]
-                                            | board.pieces[Constants::BLACK_KNIGHT] | board.pieces[Constants::BLACK_PAWN];
-    uint64_t enemyPieces = board.allPieces & ~ownPieces;
+    uint64_t ownPieces = forWhite ? board.white_pieces : board.black_pieces;
+    uint64_t enemyPieces = forWhite ? board.black_pieces : board.white_pieces;
 
     addPseudoLegalPawnMoves(board, forWhite, pseudoLegalMoves, ownPieces, enemyPieces, type);
 
@@ -227,6 +224,8 @@ bool isLegalMove(uint32_t move, GameBoard & board) {
 }
 
 bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
+    uint64_t allPieces = board.white_pieces | board.black_pieces;
+
     Move mv = decodeMove(move);
     if (board.whiteToMove != mv.piece%2) return false;
     if (!(board.pieces[mv.piece] & (1ULL << mv.from))) return false;
@@ -237,27 +236,24 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
     if (mv.castle) {
         if (!(board.castleInformation[mv.castle])) return false;
         if (mv.castle == Constants::WHITE_KING_SIDE_CASTLE || mv.castle == Constants::BLACK_KING_SIDE_CASTLE) {
-            if (board.allPieces & 3ULL << mv.from+1) return false;
+            if (allPieces & 3ULL << mv.from+1) return false;
         } else {
-            if (board.allPieces & 7ULL << mv.from-3) return false;
+            if (allPieces & 7ULL << mv.from-3) return false;
         }
         return true;
     }
-    uint64_t ownPieces = board.whiteToMove ? board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN]
-                                            | board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::WHITE_BISHOP]
-                                            | board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::WHITE_PAWN]
-                                            : board.pieces[Constants::BLACK_KING] | board.pieces[Constants::BLACK_QUEEN]
-                                            | board.pieces[Constants::BLACK_ROOK] | board.pieces[Constants::BLACK_BISHOP]
-                                            | board.pieces[Constants::BLACK_KNIGHT] | board.pieces[Constants::BLACK_PAWN];
-    uint64_t enemyPieces = board.allPieces & ~ownPieces;
+
+    uint64_t ownPieces = board.whiteToMove ? board.white_pieces : board.black_pieces;
+    uint64_t enemyPieces = board.whiteToMove ? board.black_pieces : board.white_pieces;
+
 
     if (mv.piece == Constants::WHITE_PAWN || mv.piece == Constants::BLACK_PAWN) {
         uint64_t pseudoLegalSquares = pawnCaptureBitMask[!board.whiteToMove][mv.from] & (enemyPieces | (board.enPassant != -1 ? 1ULL << board.enPassant : 0));
         if (!mv.captured_piece) pseudoLegalSquares = 0;
         int singlePushSquare = (mv.from + (board.whiteToMove ? -8 : 8));
-        if (1ULL << singlePushSquare & ~board.allPieces) {
+        if (1ULL << singlePushSquare & ~allPieces) {
             pseudoLegalSquares |= 1ULL << singlePushSquare;
-            if (pawnDoublePushBitMask[!board.whiteToMove][mv.from] & ~board.allPieces) {
+            if (pawnDoublePushBitMask[!board.whiteToMove][mv.from] & ~allPieces) {
                 pseudoLegalSquares |= pawnDoublePushBitMask[!board.whiteToMove][mv.from];
             }
         }
@@ -267,19 +263,19 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
         if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_BISHOP || mv.piece == Constants::BLACK_BISHOP) {
-        uint64_t pseudoLegalSquares = getBishopAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        uint64_t pseudoLegalSquares = getBishopAttackBits(mv.from,allPieces) & ~ownPieces;
         if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_ROOK || mv.piece == Constants::BLACK_ROOK) {
-        uint64_t pseudoLegalSquares = getRookAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        uint64_t pseudoLegalSquares = getRookAttackBits(mv.from,allPieces) & ~ownPieces;
         if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else if (mv.piece == Constants::WHITE_QUEEN || mv.piece == Constants::BLACK_QUEEN) {
-        uint64_t pseudoLegalSquares = getQueenAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        uint64_t pseudoLegalSquares = getQueenAttackBits(mv.from,allPieces) & ~ownPieces;
         if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     } else {
-        uint64_t pseudoLegalSquares = getKingAttackBits(mv.from,board.allPieces) & ~ownPieces;
+        uint64_t pseudoLegalSquares = getKingAttackBits(mv.from,allPieces) & ~ownPieces;
         if (!mv.captured_piece) pseudoLegalSquares &= ~enemyPieces;
         if (!((1ULL << mv.to) & pseudoLegalSquares)) return false;
     }
@@ -288,6 +284,8 @@ bool isPseudoLegalMove(uint32_t move, GameBoard const &board) {
 
 
 bool isSquareAttacked(int square, bool attacker_is_white, GameBoard const &board) {
+    uint64_t allPieces = board.white_pieces | board.black_pieces;
+
     //Is square attacked by knight
     uint64_t possible_knight_positions = knightAttackBitMasks[square];
     if (possible_knight_positions & board.pieces[attacker_is_white?Constants::Piece::WHITE_KNIGHT:Constants::Piece::BLACK_KNIGHT]) {
@@ -299,12 +297,12 @@ bool isSquareAttacked(int square, bool attacker_is_white, GameBoard const &board
         return true;
     }
     //Is square attacked by rook or queen (non diagonal)
-    uint64_t possible_slider_positions = getRookAttackBits(square,board.allPieces);
+    uint64_t possible_slider_positions = getRookAttackBits(square,allPieces);
     if (possible_slider_positions & (board.pieces[attacker_is_white?Constants::Piece::WHITE_ROOK:Constants::Piece::BLACK_ROOK] | board.pieces[attacker_is_white?Constants::Piece::WHITE_QUEEN:Constants::Piece::BLACK_QUEEN])) {
         return true;
     }
     //Is square attacked by bishop or queen (diagonal)
-    possible_slider_positions = getBishopAttackBits(square,board.allPieces);
+    possible_slider_positions = getBishopAttackBits(square,allPieces);
     if (possible_slider_positions & (board.pieces[attacker_is_white?Constants::Piece::WHITE_BISHOP:Constants::Piece::BLACK_BISHOP] | board.pieces[attacker_is_white?Constants::Piece::WHITE_QUEEN:Constants::Piece::BLACK_QUEEN])) {
         return true;
     }

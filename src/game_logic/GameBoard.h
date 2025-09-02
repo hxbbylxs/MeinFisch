@@ -11,7 +11,8 @@
 
 struct GameBoard {
     std::array<uint64_t, 13> pieces;
-    uint64_t allPieces;
+    uint64_t white_pieces;
+    uint64_t black_pieces;
     bool whiteToMove;
     std::array<bool, 5> castleInformation;
     int enPassant = -1;

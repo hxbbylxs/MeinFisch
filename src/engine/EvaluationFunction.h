@@ -10,8 +10,7 @@
 struct EvalInfo {
     int mg_evaluation = 0;
     int eg_evaluation = 0;
-    uint64_t white_pieces = 0;
-    uint64_t black_pieces = 0;
+    uint64_t allPieces = 0;
     uint64_t white_king_zone_small = 0;
     uint64_t black_king_zone_small = 0;
     uint64_t white_king_zone_large = 0;

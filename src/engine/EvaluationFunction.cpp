@@ -23,13 +23,7 @@ int evaluate(GameBoard const & board, int alpha, int beta) {
     int game_phase_score = getGamePhaseScore(board);
 
     EvalInfo eval_info;
-
-    eval_info.white_pieces = board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN]
-                                        | board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::WHITE_BISHOP]
-                                        | board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::WHITE_PAWN];
-    eval_info.black_pieces = board.allPieces & ~eval_info.white_pieces;
-
-
+    eval_info.allPieces = board.white_pieces | board.black_pieces;
 
     // have to be called in this particular order because attacked squares by less valuable pieces are passed by reference
     evaluateKing(board, eval_info);
@@ -40,9 +34,9 @@ int evaluate(GameBoard const & board, int alpha, int beta) {
     evaluateQueen(board, eval_info);
 
     // Hanging Pieces
-    int num_hanging_pieces = (__builtin_popcountll(eval_info.white_pieces) - __builtin_popcountll(eval_info.whites_defended_pieces));
+    int num_hanging_pieces = (__builtin_popcountll(board.white_pieces) - __builtin_popcountll(eval_info.whites_defended_pieces));
     eval_info.mg_evaluation += HANGING_PIECE*num_hanging_pieces;
-    num_hanging_pieces = (__builtin_popcountll(eval_info.black_pieces) - __builtin_popcountll(eval_info.blacks_defended_pieces));
+    num_hanging_pieces = (__builtin_popcountll(board.black_pieces) - __builtin_popcountll(eval_info.blacks_defended_pieces));
     eval_info.mg_evaluation -= HANGING_PIECE*num_hanging_pieces;
 
     // Multiple Attacks on King zone
@@ -182,7 +176,7 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
 
         uint64_t attacked_squares = pawnCaptureBitMask[0][position];
         white_pawn_attacked_squares |= attacked_squares; // will be needed in knight/bishop evaluation
-        eval_info.whites_defended_pieces |= attacked_squares & eval_info.white_pieces;
+        eval_info.whites_defended_pieces |= attacked_squares & board.white_pieces;
 
         // pressure on king
         if (attacked_squares & eval_info.black_king_zone_large) {
@@ -210,7 +204,7 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
 
         uint64_t attacked_squares = pawnCaptureBitMask[1][position];
         black_pawn_attacked_squares |= attacked_squares;
-        eval_info.blacks_defended_pieces |= attacked_squares & eval_info.black_pieces;
+        eval_info.blacks_defended_pieces |= attacked_squares & board.black_pieces;
 
         //King Pressure
         if (attacked_squares & eval_info.white_king_zone_large) {
@@ -247,10 +241,10 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
 
         uint64_t attacked_squares = knightAttackBitMasks[position];
         white_knights_attacked_squares |= attacked_squares;
-        eval_info.whites_defended_pieces |= attacked_squares & eval_info.white_pieces;
+        eval_info.whites_defended_pieces |= attacked_squares & board.white_pieces;
 
         // mobility
-        uint64_t possible_moves = ~board.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
+        uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
         any_game_phase_evaluation += KNIGHT_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
 
         // king pressure
@@ -269,10 +263,10 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
 
         uint64_t attacked_squares = knightAttackBitMasks[position];
         black_knights_attacked_squares |= attacked_squares;
-        eval_info.blacks_defended_pieces |= attacked_squares & eval_info.black_pieces;
+        eval_info.blacks_defended_pieces |= attacked_squares & board.black_pieces;
 
         //mobility
-        uint64_t possible_moves = ~board.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
+        uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
         any_game_phase_evaluation -= KNIGHT_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
 
         // king pressure
@@ -302,12 +296,12 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
 
     forEachPiece(Constants::WHITE_BISHOP,board,[&](int position, GameBoard const & game_board) {
 
-        uint64_t attacked_squares = getBishopAttackBits(position,board.allPieces);
+        uint64_t attacked_squares = getBishopAttackBits(position,eval_info.allPieces);
         white_bishops_attacked_squares |= attacked_squares;
-        eval_info.whites_defended_pieces |= attacked_squares & eval_info.white_pieces;
+        eval_info.whites_defended_pieces |= attacked_squares & board.white_pieces;
 
         // mobility
-        uint64_t possible_moves = ~board.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
+        uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
         any_game_phase_evaluation += BISHOP_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
         any_game_phase_evaluation += BISHOP_BONUS_PER_CENTER_SQUARE*__builtin_popcountll(PST_CENTER_SQUARE & possible_moves);
 
@@ -331,12 +325,12 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
     });
     forEachPiece(Constants::BLACK_BISHOP,board,[&](int position, GameBoard const & game_board) {
 
-        uint64_t attacked_squares = getBishopAttackBits(position,board.allPieces);
+        uint64_t attacked_squares = getBishopAttackBits(position,eval_info.allPieces);
         black_bishops_attacked_squares |= attacked_squares;
-        eval_info.blacks_defended_pieces |= attacked_squares & eval_info.black_pieces;
+        eval_info.blacks_defended_pieces |= attacked_squares & board.black_pieces;
 
         // mobility
-        uint64_t possible_moves = ~board.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
+        uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
         any_game_phase_evaluation -= BISHOP_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
         any_game_phase_evaluation -= BISHOP_BONUS_PER_CENTER_SQUARE*__builtin_popcountll(PST_CENTER_SQUARE & possible_moves);
 
@@ -385,8 +379,8 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
         if (num_pawns_on_line == 1) any_game_phase_evaluation += ROOK_ON_HALF_OPEN_LINE;
 
         // controlled squares
-        uint64_t attacked_squares = getRookAttackBits(position,board.allPieces);
-        eval_info.whites_defended_pieces |= eval_info.white_pieces & attacked_squares;
+        uint64_t attacked_squares = getRookAttackBits(position,eval_info.allPieces);
+        eval_info.whites_defended_pieces |= board.white_pieces & attacked_squares;
         white_rooks_attacked_squares |= attacked_squares;
 
         // pressure on king
@@ -416,8 +410,8 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
         if (num_pawns_on_line == 1) any_game_phase_evaluation -= ROOK_ON_HALF_OPEN_LINE;
 
         // controlled squares
-        uint64_t attacked_squares = getRookAttackBits(position,board.allPieces);
-        eval_info.blacks_defended_pieces |= eval_info.black_pieces & attacked_squares;
+        uint64_t attacked_squares = getRookAttackBits(position,eval_info.allPieces);
+        eval_info.blacks_defended_pieces |= board.black_pieces & attacked_squares;
         black_rooks_attacked_squares |= attacked_squares;
 
         // pressure on king
@@ -464,8 +458,8 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
     forEachPiece(Constants::WHITE_QUEEN,board,[&](int position, GameBoard const & game_board) {
 
 
-        uint64_t attacked_squares = getQueenAttackBits(position, board.allPieces);
-        eval_info.whites_defended_pieces |= attacked_squares & eval_info.white_pieces;
+        uint64_t attacked_squares = getQueenAttackBits(position, eval_info.allPieces);
+        eval_info.whites_defended_pieces |= attacked_squares & board.white_pieces;
 
         // pressure on king
         if (attacked_squares & eval_info.black_king_zone_large) {
@@ -483,7 +477,7 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
 
         //attack on queen
         if ((1ULL << position) & eval_info.squares_attacked_by_less_valuable_black_pieces) {
-            uint64_t safe_squares = attacked_squares & ~eval_info.white_pieces & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
+            uint64_t safe_squares = attacked_squares & ~board.white_pieces & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
             int num_safe_squares = __builtin_popcountll(safe_squares);
             if (num_safe_squares < 5) {
                 eval_info.eg_evaluation -= (5-num_safe_squares)*(5-num_safe_squares);
@@ -497,8 +491,8 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
     forEachPiece(Constants::BLACK_QUEEN,board,[&](int position, GameBoard const & game_board) {
 
 
-        uint64_t attacked_squares = getQueenAttackBits(position, board.allPieces);
-        eval_info.blacks_defended_pieces |= attacked_squares & eval_info.black_pieces;
+        uint64_t attacked_squares = getQueenAttackBits(position, eval_info.allPieces);
+        eval_info.blacks_defended_pieces |= attacked_squares & board.black_pieces;
 
         // pressure on king
         if (attacked_squares & eval_info.white_king_zone_large) {
@@ -516,7 +510,7 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
 
         //attack on queen
         if ((1ULL << position) & eval_info.squares_attacked_by_less_valuable_white_pieces) {
-            uint64_t safe_squares = attacked_squares & ~eval_info.black_pieces & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
+            uint64_t safe_squares = attacked_squares & ~board.black_pieces & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
             int num_safe_squares = __builtin_popcountll(safe_squares);
             if (num_safe_squares < 5) {
                 eval_info.eg_evaluation += (5-num_safe_squares)*(5-num_safe_squares);

@@ -3,6 +3,7 @@
 #include <Conversions.h>
 #include <iostream>
 #include <Memory.h>
+#include <MoveGeneration.h>
 #include <Output.h>
 #include <PerformanceTest.h>
 
@@ -20,8 +21,7 @@ int main() {
     initializeZobristHashValues();
     initializeSliderAttackBitMask(); //TODO at compiletime
     initializeHistoryHeuristic();
-
-    //testSEE();
+    
 
     engineUCI engine = engineUCI();
     std::string input;
