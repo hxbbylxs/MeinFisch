@@ -180,6 +180,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition, early check
     if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta),depth));
+    if (alpha > CHECKMATE_VALUE) return updateReturnValue(alpha); // found earlier checkmate
 
 
     Data savedData = getData(board.zobristHash);

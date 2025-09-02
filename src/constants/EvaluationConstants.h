@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include "Constants.h"
+#include "MoveGenerationConstants.h"
 
 
 inline constexpr int CHECKMATE_VALUE = 100000;
@@ -348,5 +349,37 @@ inline constexpr std::array<int,64> PST_EG_BLACK_ROOK = {
         }
         return result;
     }();
+
+
+inline constexpr std::array<uint64_t,64> ROOK_XRAY_BITMASKS = []() {
+    std::array<uint64_t,64> result = {};
+    for (int square = 0; square < 64; square++) {
+        for (int i = 0; i < 8; i++) {
+            result[square] |= 1ULL << (8*(square/8)+i);
+            result[square] |= 1ULL << ((square%8)+8*i);
+        }
+    }
+    return result;
+}();
+
+
+inline constexpr std::array<uint64_t,64> BISHOP_XRAY_BITMASKS = []() {
+    std::array<uint64_t,Constants::NUM_SQUARES> bitmasks = {};
+
+    for (int index = 0; index < Constants::NUM_SQUARES; index++) {
+        auto directions = DIAGONAL_DIRECTIONS;
+
+        //sliding from square = index diagonally in each direction until one square ahead of the edge of the board
+        for (auto const & [delta,yLimit,xLimit] : directions) {
+            int square = index;
+            while (square/Constants::BOARD_SIZE != yLimit && square%Constants::BOARD_SIZE != xLimit) {
+                square += delta;
+                bitmasks[index] |= (1ULL << square);
+            }
+        }
+    }
+    return bitmasks;
+}();
+
 
 #endif //EVALUATIONCONSTANTS_H

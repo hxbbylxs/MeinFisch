@@ -311,7 +311,10 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
         any_game_phase_evaluation += BISHOP_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
         any_game_phase_evaluation += BISHOP_BONUS_PER_CENTER_SQUARE*__builtin_popcountll(PST_CENTER_SQUARE & possible_moves);
 
-        //TODO xray on rook/queen/king
+        //xray attack
+        if (BISHOP_XRAY_BITMASKS[position] & (board.pieces[Constants::BLACK_KING] | board.pieces[Constants::BLACK_QUEEN] | board.pieces[Constants::WHITE_ROOK])) {
+            eval_info.mg_evaluation += BISHOP_XRAY;
+        }
 
         // king pressure
         if (attacked_squares & eval_info.black_king_zone_large) {
@@ -337,7 +340,10 @@ void evaluateBishops(GameBoard const &board, EvalInfo & eval_info) {
         any_game_phase_evaluation -= BISHOP_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
         any_game_phase_evaluation -= BISHOP_BONUS_PER_CENTER_SQUARE*__builtin_popcountll(PST_CENTER_SQUARE & possible_moves);
 
-        //TODO xray
+        //xray attack
+        if (BISHOP_XRAY_BITMASKS[position] & (board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN] | board.pieces[Constants::WHITE_ROOK])) {
+            eval_info.mg_evaluation -= BISHOP_XRAY;
+        }
 
         // king pressure
         if (attacked_squares & eval_info.white_king_zone_large) {
@@ -392,7 +398,10 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
             }
         }
 
-        // TODO xray
+        //xray attacks
+        if (ROOK_XRAY_BITMASKS[position] & (board.pieces[Constants::BLACK_KING] | board.pieces[Constants::BLACK_QUEEN])) {
+            eval_info.mg_evaluation += ROOK_XRAY;
+        }
 
         // PST
         eval_info.mg_evaluation += PST_MG_WHITE_ROOK[position];
@@ -420,7 +429,10 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
             }
         }
 
-        // TODO xray
+        //xray attack
+        if (ROOK_XRAY_BITMASKS[position] & (board.pieces[Constants::WHITE_KING] | board.pieces[Constants::WHITE_QUEEN])) {
+            eval_info.mg_evaluation -= ROOK_XRAY;
+        }
 
         // PST
         eval_info.mg_evaluation -= PST_MG_BLACK_ROOK[position];
@@ -430,6 +442,7 @@ void evaluateRooks(GameBoard const &board, EvalInfo & eval_info) {
     eval_info.squares_attacked_by_less_valuable_white_pieces |= white_rooks_attacked_squares;
     eval_info.squares_attacked_by_less_valuable_black_pieces |= black_rooks_attacked_squares;
 
+    // connected rooks
     if (__builtin_popcountll(board.pieces[Constants::WHITE_ROOK] & white_rooks_attacked_squares)) {
         eval_info.mg_evaluation += ROOKS_MG_CONNECTED;
         eval_info.eg_evaluation += ROOKS_EG_CONNECTED;
@@ -463,6 +476,11 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
             }
         }
 
+        // xray attack
+        if ((ROOK_XRAY_BITMASKS[position] | BISHOP_XRAY_BITMASKS[position]) & (board.pieces[Constants::BLACK_KING])) {
+            eval_info.mg_evaluation += QUEEN_XRAY;
+        }
+
         //attack on queen
         if ((1ULL << position) & eval_info.squares_attacked_by_less_valuable_black_pieces) {
             uint64_t safe_squares = attacked_squares & ~eval_info.white_pieces & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
@@ -490,6 +508,11 @@ void evaluateQueen(GameBoard const &board, EvalInfo & eval_info) {
                 any_game_phase_evaluation -= QUEEN_ATTACKS_SMALL_KING_ZONE*__builtin_popcountll(eval_info.white_king_zone_small & attacked_squares);
             }
         }
+
+        if ((ROOK_XRAY_BITMASKS[position] | BISHOP_XRAY_BITMASKS[position]) & (board.pieces[Constants::WHITE_KING])) {
+            eval_info.mg_evaluation -= QUEEN_XRAY;
+        }
+
 
         //attack on queen
         if ((1ULL << position) & eval_info.squares_attacked_by_less_valuable_white_pieces) {
