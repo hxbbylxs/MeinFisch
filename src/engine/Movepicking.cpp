@@ -119,6 +119,9 @@ int static_exchange_evaluation(int square, bool attacker_is_white, GameBoard & b
 
     int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & attack_move) >> 10]);
     Constants::Piece piece_attacking = static_cast<Constants::Piece>(move_decoding_bitmasks[MoveDecoding::PIECE] & attack_move);
+    if (attack_move & move_decoding_bitmasks[MoveDecoding::PROMOTION]) {
+        piece_attacking = static_cast<Constants::Piece>((move_decoding_bitmasks[MoveDecoding::PROMOTION] & attack_move) >> 20);
+    }
 
     board.applyPseudoLegalMove(attack_move);
     int value = std::max(0,captured_piece_value - static_exchange_evaluation(square, !attacker_is_white, board,piece_attacking));
@@ -136,7 +139,10 @@ int static_exchange_evaluation(uint32_t move, GameBoard & board) {
     uint64_t hash_before = board.zobristHash;
 
     board.applyPseudoLegalMove(move);
-    int value = abs(STATIC_MG_PIECE_VALUES[mv.captured_piece]) - static_exchange_evaluation(mv.to,board.whiteToMove,board,mv.piece);
+
+    Constants::Piece piece_on_square = mv.pawn_promote_to ? mv.pawn_promote_to : mv.piece;
+
+    int value = abs(STATIC_MG_PIECE_VALUES[mv.captured_piece]) - static_exchange_evaluation(mv.to,board.whiteToMove,board,piece_on_square);
     board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
     return value;
 }

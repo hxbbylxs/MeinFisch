@@ -226,6 +226,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
 
         int move_number = 0;
         for (uint32_t move : moves) {
+
             if (!isLegalMove(move, board)) continue;
 
             if (move == savedData.bestMove && phase != TTMove) continue;

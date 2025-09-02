@@ -2,11 +2,15 @@
 // Created by salom on 24.06.2025.
 //
 #include <array>
+#include <thread>
+
+#include "../io/Output.h"
 
 using std::array;
 #include <vector>
 using std::vector;
 #include <algorithm>
+#include <cassert>
 
 #include "Conversions.h"
 #include "GameBoard.h"
@@ -78,6 +82,9 @@ bool GameBoard::isCheck(bool whiteKing) const {
 }
 
 void GameBoard::applyPseudoLegalMove(uint32_t move) {
+
+    assert(isPseudoLegalMove(move,*this));
+
     if (!whiteToMove) moves++;
     plies++;
     Move mv = decodeMove(move);
