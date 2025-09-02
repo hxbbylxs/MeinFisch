@@ -89,16 +89,22 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
     plies++;
     Move mv = decodeMove(move);
 
+    // remove piece from its square
     pieces[mv.piece] &= ~(1ULL << mv.from);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.from][mv.piece];
+
+    // put piece on new square
     pieces[mv.piece] |= (1ULL << mv.to);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.piece];
+
+    // remove captured piece (en passant is handled later, nothing bad happens here in en passant case)
     pieces[mv.captured_piece] &= ~(1ULL << mv.to);
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
 
     allPieces &= ~(1ULL << mv.from);
     allPieces |= (1ULL << mv.to);
 
+    // adjust captured piece in en passant case
     if (mv.to == enPassant && mv.captured_piece != Constants::Piece::NONE) {
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
         int offset = whiteToMove ? 8 : -8;
@@ -106,9 +112,12 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to+offset][mv.captured_piece];
         allPieces &= ~(1ULL << mv.to+offset);
     }
+
+    // reset old en passant
     if (enPassant != -1) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_ENPASSANT[enPassant%8];
     enPassant = -1;
 
+    // promotions and setting new en passant square
     if (mv.piece == Constants::WHITE_PAWN || mv.piece == Constants::BLACK_PAWN) {
         plies = 0;
         handlePawnSpecialCases(mv);
@@ -121,19 +130,24 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
     if (mv.captured_piece != Constants::Piece::NONE) plies = 0;
 
     whiteToMove = !whiteToMove;
-    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[0];
+    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[0]; // switch player to move
 
+    // to detect threefold repetition
     addNewBoardPosition(zobristHash);
 }
 
 void GameBoard::handlePawnSpecialCases(Move const & mv) {
     if (mv.pawn_promote_to != Constants::Piece::NONE) {
+        // remove pawn from the square it has previously been set to
         pieces[mv.piece] &= ~(1ULL << mv.to);
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.piece];
+
+        // put the new piece on that square
         pieces[mv.pawn_promote_to] |= (1ULL << mv.to);
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.pawn_promote_to];
     }
     if (mv.from == mv.to +16 || mv.from == mv.to -16) {
+        // in case of double push, set enPassant to the square in between
         enPassant =  (mv.from+mv.to)/2;
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_ENPASSANT[enPassant%8];
     }
@@ -189,7 +203,7 @@ void GameBoard::updateCastleInformation(Move const & mv) {
 
 void GameBoard::unmakeMove(uint32_t move, int enPassant_, std::array<bool, 5> castleRights, uint8_t plies_before, uint64_t hash_before) {
 
-    removeBoardPosition(zobristHash); // removes board position from the saved positions
+    removeBoardPosition(zobristHash); // removes board position from the saved positions for threefold rep
 
     Move mv = decodeMove(move);
 
@@ -197,13 +211,18 @@ void GameBoard::unmakeMove(uint32_t move, int enPassant_, std::array<bool, 5> ca
     plies = plies_before;
     if (whiteToMove) moves--;
 
+    // remove piece from the target square
     pieces[mv.piece] &= ~(1ULL << mv.to);
     if (mv.pawn_promote_to != Constants::Piece::NONE) {
         pieces[mv.pawn_promote_to] &= ~(1ULL << mv.to);
     }
     allPieces &= ~(1ULL << mv.to);
+
+    // add piece to the original square
     pieces[mv.piece] |= (1ULL << mv.from);
     allPieces |= (1ULL << mv.from);
+
+    // put captured piece back on the target square
     if (mv.captured_piece != Constants::Piece::NONE) {
         if (enPassant_ == mv.to) {
             int offset = whiteToMove ? -8 : 8;
@@ -244,7 +263,6 @@ bool GameBoard::operator==(GameBoard const & other) const {
 
 // board positions for move repetition check
 
-// returns true if the position is the third repetition
 void GameBoard::addNewBoardPosition(uint64_t hash) {
     int& count = board_positions[hash];
     count++;
@@ -253,8 +271,7 @@ void GameBoard::addNewBoardPosition(uint64_t hash) {
 void GameBoard::removeBoardPosition(uint64_t hash) {
     auto it = board_positions.find(hash);
     if (it == board_positions.end()) {
-        // error
-        return;
+        assert(false);
     }
     if (it->second == 1) {
         board_positions.erase(it);
