@@ -18,8 +18,15 @@ cmake --build
 ```
 
 ## Execution
-MeinFisch is UCI compatible. To execute MeinFisch run the .exe and type uci commands like ucinewgame, position startpos, go.
-For a gui and testing the engine I used cutechess https://github.com/cutechess/cutechess/releases
+
+MeinFisch is UCI-compatible. To run the engine, execute the binary and use UCI commands such as:  
+  
+```text
+ucinewgame
+position startpos
+go
+```  
+For testing and GUI support, the engine can be used with a GUI like CuteChess https://github.com/cutechess/cutechess/releases  
 
 ## Key Concepts in the Code
 Basics:  
