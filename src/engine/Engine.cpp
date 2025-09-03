@@ -3,15 +3,7 @@
 //
 #include <iostream>
 #include <vector>
-#include <stdexcept>
-#include <algorithm>
-#include <Conversions.h>
-#include <set>
-#include <queue>
-
 using std::vector;
-
-#include <list>
 
 #include <utility>
 using std::pair;
@@ -31,6 +23,7 @@ using Constants::MoveDecoding;
 
 #include "GameBoard.h" // lib game_logic
 #include "MoveGeneration.h"
+#include "Conversions.h"
 
 #include "Output.h" // lib io
 
@@ -80,16 +73,10 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_
             printAnalysisData(incompleteMoveCalculation,depth, highest_depth ,start,total_nodes_searched,pv);
         }
 
-        //debug
-        /*std::cout << "Futility Attempts: " << futility_attempts << std::endl;
-        std::cout << "Futility Researches: " << futility_researches << std::endl;
-        std::cout << "LMR Attempts: " << lmr_attempts << std::endl;
-        std::cout << "LMR Researches: " << lmr_researches << std::endl;*/
-
         decreaseAllMoveScores();
 
         // Not worth starting a new depth or last depth reached
-        if (!timeIsUp && (depth == max_depth || dontStartNewDepthTime-std::chrono::high_resolution_clock::now() < std::chrono::milliseconds(0))) {
+        if (!timeIsUp && (depth == max_depth || std::chrono::high_resolution_clock::now() >= dontStartNewDepthTime)) {
             currentBestMove = incompleteMoveCalculation;
             timeIsUp = true;
             break;
@@ -105,7 +92,7 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_
 void startTimeLimit(int timeLimit) {
     auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
     while (deadline > std::chrono::high_resolution_clock::now() && !timeIsUp) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     timeIsUp = true;
 }
@@ -152,19 +139,6 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
         }
 
     }
-
-
-    /*for (int i = 0; i < 10; i++) {
-        auto move = MoveOrder.top();
-        MoveOrder.pop();
-        std::cout << "Move " << longAlgebraicNotation(move.second) << " Eval: " << move.first << std::endl;
-    }*/
-
-
-    /*std::cout << "TT Cutoffs: " << cutoffs[TTMove] << std::endl;
-    std::cout << "Killer Cutoffs: " << cutoffs[Killer] << std::endl;
-    std::cout << "Capture Cutoffs: " << cutoffs[Captures] << std::endl;
-    std::cout << "Quiet Cutoffs: " << cutoffs[Quiets] << std::endl;*/
 
     if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,max,currentBestMove,board);
     return {currentBestMove,max};
@@ -379,34 +353,6 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
     return alpha;
 }
 
-/*
-*            if (phase >= Good_Quiets && !isCheck && depth%2 == 0 && num_pieces >= 14) {
-
-                // late move reduction/pruning
-                bool search_at_full_depth = true;
-
-                if (move_number > 0 &&  standing_pat < alpha - (FUTILITY_DEPTH_SAFETY_MARGIN*maxRecursionDepth)) {
-                    futility_attempts++;
-                    currentValue = (maxRecursionDepth <= 2) ? -quiscenceSearch(board,0,(-(alpha+1)),(-alpha),depth+1) : -negaMax(board,1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1);
-                    if (currentValue <= alpha) {
-                        search_at_full_depth = false;
-                    } else futility_researches++;
-                }
-                else if (maxRecursionDepth > 2 && move_number > 1) {
-                    lmr_attempts++;
-                    currentValue = -negaMax(board,maxRecursionDepth-1-(phase == Bad_Moves ? maxRecursionDepth/2 : 1),updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1);
-                    if (currentValue <= alpha) search_at_full_depth = false;
-                    else lmr_researches++;
-                }
-                if (search_at_full_depth) {
-                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),depth+1);
-                }
-            } else {
-
-                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),depth+1);
-
-            }
- */
 
 std::string reconstructPV(GameBoard & board) {
 
