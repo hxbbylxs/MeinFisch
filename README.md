@@ -1,6 +1,7 @@
 # MeinFisch
 
-A chess engine in **C++** built with **CMake**.
+A chess engine in **C++** built with **CMake**. <br><br>
+<img src="https://en.meming.world/images/en/b/b1/Baby_Beats_Computer_at_Chess.jpg" alt="*Meme not loading*" width="200" align="top">
 
 ## Requirements
 
