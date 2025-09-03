@@ -21,5 +21,17 @@ cmake --build
 MeinFisch is UCI compatible. To execute MeinFisch run the .exe and type uci commands like ucinewgame, position startpos, go.
 For a gui and testing the engine I used cutechess https://github.com/cutechess/cutechess/releases
 
-## The Code
-TODO useful links
+## Key Concepts in the Code
+Basics:  
+Bitboard, Minimax, Pruning: https://www.youtube.com/watch?v=w4FFX_otR-4  
+Negamax: https://en.wikipedia.org/wiki/Negamax  
+Transposition Table (TT): https://en.wikipedia.org/wiki/Transposition_table  
+Zobrist Hashing: https://www.chessprogramming.org/Zobrist_Hashing  
+Universal Chess Interface (UCI): https://page.mi.fu-berlin.de/block/uci.htm
+
+Advanced:  
+Piece Square Tables (PST): https://www.chessprogramming.org/Piece-Square_Tables  
+History Heuristic: https://www.chessprogramming.org/History_Heuristic  
+Killer Heuristic: https://www.chessprogramming.org/Killer_Heuristic  
+Late Move Reductions (LMR): https://www.chessprogramming.org/Late_Move_Reductions  
+
