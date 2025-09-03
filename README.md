@@ -31,7 +31,9 @@ For testing and GUI support, the engine can be used with a GUI like CuteChess ht
 
 ## Key Concepts in the Code
 Basics:  
-Bitboard, Minimax, Pruning: https://www.youtube.com/watch?v=w4FFX_otR-4  
+Minimax, Pruning: A really good explanation: https://www.youtube.com/watch?v=l-hh51ncgDI&t=1s    
+Bitboards: https://de.wikipedia.org/wiki/Bitboard  
+Magic Bitboards: https://www.chessprogramming.org/Magic_Bitboards  
 Negamax: https://en.wikipedia.org/wiki/Negamax  
 Transposition Table (TT): https://en.wikipedia.org/wiki/Transposition_table  
 Zobrist Hashing: https://www.chessprogramming.org/Zobrist_Hashing  
