@@ -78,19 +78,18 @@ std::string evaluationToString(int evaluation) {
     if (abs(evaluation) > CHECKMATE_VALUE - 1000) {
         std::string result = "mate ";
         if (evaluation < 0) result += "-";
-        result += std::to_string((CHECKMATE_VALUE-abs(evaluation)+1)/2);
+        result += std::to_string((CHECKMATE_VALUE-abs(evaluation)+1)/2); // num plies -> num moves
         return result;
     }
     return "cp " + std::to_string(evaluation);
 }
 
-void printAnalysisData(std::pair<uint32_t,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes) {
+void printAnalysisData(std::pair<uint32_t,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes, std::string const & pv) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
     int time = duration.count();
     auto const & [mv,evaluation] = move;
     cout << "info depth " << depth << " seldepth " << seldepth << " score " << evaluationToString(evaluation)
-            << "  pv "   << convertIntToPosition((mv&Constants::move_decoding_bitmasks[Constants::MoveDecoding::FROM])>>4)
-                            << convertIntToPosition((mv&Constants::move_decoding_bitmasks[Constants::MoveDecoding::TO])>>14) << " time " << time << " nodes " << nodes << " nps " << (time != 0 ? (nodes/time)*1000 : 0) <<endl;
+            << "  pv "   << pv << " time " << time << " nodes " << nodes << " nps " << (time != 0 ? (nodes/time)*1000 : 0) <<endl;
 }
 
 

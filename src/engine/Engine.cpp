@@ -76,7 +76,8 @@ pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_
         highest_depth = 0;
         incompleteMoveCalculation = getOptimalMoveNegaMax(board,depth);
         if (!timeIsUp) {
-            printAnalysisData(incompleteMoveCalculation,depth, highest_depth ,start,total_nodes_searched);
+            std::string pv = reconstructPV(board);
+            printAnalysisData(incompleteMoveCalculation,depth, highest_depth ,start,total_nodes_searched,pv);
         }
 
         //debug
@@ -406,3 +407,28 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
 
             }
  */
+
+std::string reconstructPV(GameBoard & board) {
+
+    // get best move from transposition table
+    Data savedData = getData(board.zobristHash);
+    if (savedData.evaluationFlag != EMPTY && board.board_positions[board.zobristHash] < 3) {
+
+        //Data for unmaking the move
+        int plies = board.plies;
+        auto castle_rights = board.castleInformation;
+        int enPassant = board.enPassant;
+        uint64_t hash_before = board.zobristHash;
+
+        // make move
+        board.applyPseudoLegalMove(savedData.bestMove);
+
+        // recursively add the next pv move
+        std::string pv = longAlgebraicNotation(savedData.bestMove) + " " + reconstructPV(board);
+
+        board.unmakeMove(savedData.bestMove,enPassant,castle_rights,plies,hash_before);
+
+        return pv;
+    }
+    return ""; // no valid tt entry (pv end)
+}

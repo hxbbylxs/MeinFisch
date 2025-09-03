@@ -27,6 +27,8 @@ std::pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursio
 int negaMax(GameBoard  & board, int maxRecursionDepth, int alpha, int beta, int depth); // searches all moves (expected bad ones lower depth)
 int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth); // searches only captures
 
+std::string reconstructPV(GameBoard & board);
+
 
 
 

@@ -6,10 +6,10 @@ add_subdirectory(io)
 add_subdirectory(engineUCI)
 
 
-add_executable(MeinFischV6 main.cpp
+add_executable(MeinFischCandidate main.cpp
 )
 
-target_link_libraries(MeinFischV6
+target_link_libraries(MeinFischCandidate
         constants
         game_logic
         io

@@ -17,6 +17,6 @@ void printBitBoard(uint64_t number);
 void printCompleteMove(Move const & move);
 
 std::string evaluationToString(int evaluation);
-void printAnalysisData(std::pair<uint32_t,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes);
+void printAnalysisData(std::pair<uint32_t,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes, std::string const & pv);
 
 #endif //OUTPUT_H
