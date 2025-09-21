@@ -12,14 +12,16 @@
 
 enum MoveGenPhase {
     TTMove,
-    Killer,
     Good_Captures,
+    Killer,
+    Counter,
     Good_Quiets,
     Bad_Moves,
     Done
 };
+inline constexpr int NUM_MOVE_GEN_PHASES = 7;
 
-std::vector<uint32_t> pickNextMoves(Data const & savedData, uint32_t killerCandidate, GameBoard const & board, MoveGenPhase & phase);
+std::vector<uint32_t> pickNextMoves(Data const & savedData, uint32_t counter_candidate, uint32_t killer_candidate, GameBoard const & board, MoveGenPhase & phase);
 
 void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board);
 int getMoveScoreEndGame(uint32_t move);

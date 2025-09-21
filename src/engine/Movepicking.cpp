@@ -21,25 +21,31 @@ using Constants::MoveDecoding;
 
 // generates next moves only when necessary (lazy move generation)
 // example: no need to generate all quiet moves when a capture move already causes a cutoff
-std::vector<uint32_t> pickNextMoves(Data const &savedData, uint32_t killerCandidate, GameBoard const &board, MoveGenPhase & phase) {
+std::vector<uint32_t> pickNextMoves(Data const &savedData,uint32_t counter_candidate ,uint32_t killer_candidate, GameBoard const &board, MoveGenPhase & phase) {
     std::vector<uint32_t> moves;
     switch (phase) {
         case TTMove:
                 if (savedData.evaluationFlag != EMPTY) {
                     return {savedData.bestMove};
                 }
-            phase = Killer;
-            [[fallthrough]];
-        case Killer:
-            if (killerCandidate != savedData.bestMove && isPseudoLegalMove(killerCandidate,board)) {
-                return {killerCandidate};
-            }
             phase = Good_Captures;
             [[fallthrough]];
         case Good_Captures:
             moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
             mvv_lva_MoveOrdering(moves);
             return moves;
+        case Killer:
+            if (isPseudoLegalMove(killer_candidate,board)) {
+                return {killer_candidate};
+            }
+        phase = Counter;
+        [[fallthrough]];
+        case Counter:
+            if (isPseudoLegalMove(counter_candidate,board)) {
+                return {counter_candidate};
+            }
+        phase = Good_Quiets;
+        [[fallthrough]];
         case Good_Quiets:
             moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
             staticMoveOrdering(moves, board);

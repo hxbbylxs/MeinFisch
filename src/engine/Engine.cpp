@@ -36,7 +36,7 @@ int futility_attempts = 0;
 int futility_researches = 0;
 int lmr_attempts = 0;
 int lmr_researches = 0;
-std::array<int,5> cutoffs = {};
+std::array<int,NUM_MOVE_GEN_PHASES> cutoffs = {};
 
 
 
@@ -103,7 +103,7 @@ void startTimeLimit(int timeLimit) {
 pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
 
     total_nodes_searched++;
-    cutoffs = {};
+    //cutoffs = {};
 
     Data savedData = getData(board.zobristHash);
 
@@ -127,7 +127,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
 
 
         board.applyPseudoLegalMove(move);
-        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),1);
+        int currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),1,move);
         board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
         if (currentValue > max) {
@@ -144,7 +144,7 @@ pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDept
     return {currentBestMove,max};
 }
 
-int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth) {
+int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth, uint32_t previous_move) {
 
 
     if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
@@ -191,11 +191,15 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
     if (isCheck) maxRecursionDepth++; // check extension
     int num_pieces = __builtin_popcountll(board.white_pieces | board.black_pieces);
 
+    uint32_t killer_candidate = killer_moves[depth];
+    Move prev_mv = decodeMove(previous_move);
+    uint32_t counter_candidate = counter_moves[prev_mv.from][prev_mv.to];
+
 
     while (phase != Done) {
         bool breakWhile = false;
 
-        auto moves = pickNextMoves(savedData, killer_moves[maxRecursionDepth] ,board,phase);
+        auto moves = pickNextMoves(savedData,counter_candidate ,killer_candidate ,board,phase);
         if (phase == Bad_Moves) moves = bad_moves_for_later;
 
 
@@ -204,8 +208,9 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
 
             if (!isLegalMove(move, board)) continue;
 
-            if (move == savedData.bestMove && phase != TTMove) continue;
-            if (move == killer_moves[maxRecursionDepth] && phase > Killer) continue;
+            if (move == savedData.bestMove && phase > TTMove) continue;
+            if (move == counter_candidate && phase > Counter) continue; // Counter and Killer are not captures!!
+            if (move == killer_candidate && phase > Killer) continue;
 
             if ((phase == Good_Captures || phase == Good_Quiets) && static_exchange_evaluation(move,board) < 0) {
                 bad_moves_for_later.push_back(move);
@@ -222,19 +227,21 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
             switch (phase) {
                 case TTMove:
                     [[fallthrough]];
+                case Good_Captures:
+                    [[fallthrough]];
                 case Killer:
                     [[fallthrough]];
-                case Good_Captures:
+                case Counter:
                     research_necessary = false;
-                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1);
+                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move);
                     break;
                 case Good_Quiets:
                     if (!isCheck && move_number > 2 && num_pieces >= 14) {
                         // late move reduction
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1);
+                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
                     } else {
-                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1);
+                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
                     }
                     if (currentValue <= alpha) research_necessary = false;
                     break;
@@ -245,14 +252,14 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                         if (currentValue <= alpha) research_necessary = false;
                     } else if (!isCheck && num_pieces >= 14) {
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1);
+                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
                         if (currentValue <= alpha) research_necessary = false;
                     }
                 default:
                     break;
             }
             if (research_necessary) {
-                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1);
+                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move);
                 lmr_researches++;
             }
 
@@ -266,9 +273,12 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                 }
             }
             if (alpha >= beta) {
-                if (!(move & move_decoding_bitmasks[MoveDecoding::CAPTURE])) killer_moves[maxRecursionDepth] = move;
+                if (!(move & move_decoding_bitmasks[MoveDecoding::CAPTURE])) {
+                    killer_moves[depth] = move;
+                    counter_moves[prev_mv.from][prev_mv.to] = move;
+                }
                 increaseMoveScore(move,maxRecursionDepth);
-                cutoffs[phase]++;
+                //cutoffs[phase]++;
                 breakWhile = true;
                 break;
             }

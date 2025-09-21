@@ -28,7 +28,17 @@ int main() {
 
     while (input != "quit") {
         std::getline(std::cin, input);
-        engine.receiveCommand(input);
+        try {
+            engine.receiveCommand(input);
+        } catch (const std::bad_alloc& e) {
+            std::cout << e.what() << std::endl;
+        }
+        catch (const std::system_error& e) {
+            std::cout << e.what() << std::endl;
+        }
+        catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+        }
     }
 
     return 0;

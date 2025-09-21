@@ -51,6 +51,9 @@ void clearTT();
 // Killer Moves
 inline std::array<uint32_t,Constants::MAX_RECURSION_DEPTH> killer_moves = {};
 
+// Counter Moves
+inline std::array<std::array<uint32_t,Constants::NUM_SQUARES>,Constants::NUM_SQUARES> counter_moves = {};
+
 // History Heuristic
 // assigns a score to a move based on [from][to] for move ordering
 // when a move causes a cutoff the value at [from][to] is increased
