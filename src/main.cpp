@@ -1,14 +1,11 @@
 
 #include <chrono>
-#include <Conversions.h>
+
 #include <iostream>
 #include <Memory.h>
-#include <MoveGeneration.h>
-#include <Output.h>
-#include <PerformanceTest.h>
 
-#include "Movepicking.h"
-#include "EngineUCI.h"
+
+#include "engineUCI.h"
 
 #include "Constants.h"
 #include "EvaluationConstants.h"
