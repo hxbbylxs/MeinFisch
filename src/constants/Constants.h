@@ -43,6 +43,17 @@ namespace Constants {
         BLACK_KING_SIDE_CASTLE = 4
     };
 
+    enum Direction {
+        NORTH = -8,
+        EAST = 1,
+        SOUTH = 8,
+        WEST = -1,
+        NORTH_EAST = -7,
+        NORTH_WEST = -9,
+        SOUTH_EAST = 9,
+        SOUTH_WEST = 7
+    };
+
 
 
     std::string const STANDARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

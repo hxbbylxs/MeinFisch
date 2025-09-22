@@ -21,6 +21,8 @@ void engineUCI::receiveCommand(std::string const & message) {
         std::cout << "uciok" << std::endl;
     } else if (message == "ucinewgame") {
         initializeHistoryHeuristic();
+        killer_moves = {};
+        counter_moves = {};
         clearTT();
         global_board = GameBoard();
     } else if (message == "isready") {
@@ -119,12 +121,12 @@ std::string engineUCI::calcBestMove(std::string const & go) {
 
     auto res = iterativeDeepening(global_board, searchTime, max_depth);
 
-    return "bestmove "+convertMoveToOutput(res.first);
+    return "bestmove "+longAlgebraicNotation(res.first);
 }
 
 void engineUCI::makeMove(std::string const & move, GameBoard & gameBoard) {
-    int from = std::tolower(move[0])-'a' + 56-8*(move[1]-'1');
-    int to = std::tolower(move[2])-'a' + 56-8*(move[3]-'1');
+    unsigned from = std::tolower(move[0])-'a' + 56-8*(move[1]-'1');
+    unsigned to = std::tolower(move[2])-'a' + 56-8*(move[3]-'1');
     Constants::Piece pawn_promotion = Constants::Piece::NONE;
     if (move.length() == 5) {
         if (move[4] == 'q') {
@@ -146,16 +148,8 @@ void engineUCI::makeMove(std::string const & move, GameBoard & gameBoard) {
     else if (piece == Constants::WHITE_KING && to == 58 && from == 60) castle = Constants::Castle::WHITE_QUEEN_SIDE_CASTLE;
     else if (piece == Constants::BLACK_KING && to == 6 && from == 4) castle = Constants::Castle::BLACK_KING_SIDE_CASTLE;
     else if (piece == Constants::BLACK_KING && to == 2 && from == 4) castle = Constants::Castle::BLACK_QUEEN_SIDE_CASTLE;
-    uint32_t mv = piece | (from << 4) | (capture << 10) | (to << 14) | (pawn_promotion << 20) | (castle << 24);
+
+    Move mv = {piece,from,capture,to,pawn_promotion,castle};
 
     gameBoard.applyPseudoLegalMove(mv);
-}
-
-std::string engineUCI::convertMoveToOutput(uint32_t move) {
-    std::string result = convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::FROM])>>4)+
-        convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::TO])>>14);
-    if (move & Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION]) {
-        result += (Constants::PROMOTION_STRING[(move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION])>>20]);
-    }
-    return result;
 }

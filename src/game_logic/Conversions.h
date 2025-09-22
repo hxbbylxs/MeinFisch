@@ -22,9 +22,7 @@ std::array<bool, 5> convertStringToCastleInformation(std::string const & castles
 std::array<uint64_t, 13> convertStringToPieceInformation(std::string const & pieces);
 std::string toString(Constants::Piece piece);
 std::string toString(Constants::Castle castle);
-//std::string toString(Player const & player);
-std::string algebraicNotation(uint32_t move);
-std::string longAlgebraicNotation(uint32_t move);
+std::string longAlgebraicNotation(Move move);
 
 
 #endif //CONVERSIONS_H

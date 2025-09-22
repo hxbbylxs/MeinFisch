@@ -1,7 +1,6 @@
 //
 // Created by salom on 16.07.2025.
 //
-#include <cmath>
 
 #include "EvaluationFunction.h"
 
@@ -97,66 +96,6 @@ void evaluateKing(GameBoard const &board, EvalInfo & eval_info) {
     eval_info.eg_evaluation += PST_EG_WHITE_KING[white_king_position];
     eval_info.eg_evaluation -= PST_EG_BLACK_KING[black_king_position];
 
-    // punish open lines to the king
-    /*uint64_t if_king_moves_like_queen = getQueenAttackBits(white_king_position,board.allPieces);
-    int num_reachable_squares = __builtin_popcountll(if_king_moves_like_queen);
-    eval_info.mg_evaluation -= num_reachable_squares;
-
-    uint64_t if_black_king_moves_like_queen = getQueenAttackBits(black_king_position,board.allPieces);
-    num_reachable_squares = __builtin_popcountll(if_black_king_moves_like_queen);
-    eval_info.mg_evaluation += num_reachable_squares;*/
-
-    // Squares attacked around the king are evaluated as pressure in the evaluatePiece functions
-    // due to performance, although they would belong here.
-
-    /*//black pieces in whites small zone
-    int num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_QUEEN]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*QUEEN_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_ROOK]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*ROOK_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_BISHOP]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*BISHOP_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_KNIGHT]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*KNIGHT_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_small & board.pieces[Constants::BLACK_PAWN]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*PAWN_IN_SMALL_KING_ZONE;
-
-    //black pieces in whites large zone
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_large & board.pieces[Constants::BLACK_QUEEN]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*QUEEN_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_large & board.pieces[Constants::BLACK_ROOK]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*ROOK_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_large & board.pieces[Constants::BLACK_BISHOP]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*BISHOP_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_large & board.pieces[Constants::BLACK_KNIGHT]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*KNIGHT_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.white_king_zone_large & board.pieces[Constants::BLACK_PAWN]);
-    eval_info.mg_evaluation -= num_pieces_in_zone*PAWN_IN_LARGE_KING_ZONE;
-
-        //white pieces in black small zone
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_small & board.pieces[Constants::WHITE_QUEEN]);
-    eval_info.mg_evaluation += num_pieces_in_zone*QUEEN_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_small & board.pieces[Constants::WHITE_ROOK]);
-    eval_info.mg_evaluation += num_pieces_in_zone*ROOK_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_small & board.pieces[Constants::WHITE_BISHOP]);
-    eval_info.mg_evaluation += num_pieces_in_zone*BISHOP_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_small & board.pieces[Constants::WHITE_KNIGHT]);
-    eval_info.mg_evaluation += num_pieces_in_zone*KNIGHT_IN_SMALL_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_small & board.pieces[Constants::WHITE_PAWN]);
-    eval_info.mg_evaluation += num_pieces_in_zone*PAWN_IN_SMALL_KING_ZONE;
-
-    //white pieces in blacks large zone
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_QUEEN]);
-    eval_info.mg_evaluation += num_pieces_in_zone*QUEEN_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_ROOK]);
-    eval_info.mg_evaluation += num_pieces_in_zone*ROOK_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_BISHOP]);
-    eval_info.mg_evaluation += num_pieces_in_zone*BISHOP_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_KNIGHT]);
-    eval_info.mg_evaluation += num_pieces_in_zone*KNIGHT_IN_LARGE_KING_ZONE;
-    num_pieces_in_zone = __builtin_popcountll(eval_info.black_king_zone_large & board.pieces[Constants::WHITE_PAWN]);
-    eval_info.mg_evaluation += num_pieces_in_zone*PAWN_IN_LARGE_KING_ZONE;*/
-
     if (eval_info.white_king_zone_small & eval_info.black_king_zone_small) {
         eval_info.num_attackers_black_small_zone++;
         eval_info.num_attackers_white_small_zone++;
@@ -247,6 +186,12 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
         uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_black_pieces;
         any_game_phase_evaluation += KNIGHT_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
 
+        // outpost
+             //  no enemy pawn ahead                                                                    own pawn protects knight
+        if (!(PASSED_PAWN_BITMASK[0][position] & board.pieces[Constants::Piece::BLACK_PAWN]) && (pawnCaptureBitMask[1][position] & board.pieces[Constants::Piece::WHITE_PAWN])) {
+            eval_info.mg_evaluation += KNIGHT_OUTPOST;
+        }
+
         // king pressure
         if (attacked_squares & eval_info.black_king_zone_large) {
             any_game_phase_evaluation += KNIGHT_ATTACKS_LARGE_KING_ZONE*__builtin_popcountll(eval_info.black_king_zone_large & attacked_squares);
@@ -268,6 +213,12 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
         //mobility
         uint64_t possible_moves = ~eval_info.allPieces & attacked_squares & ~eval_info.squares_attacked_by_less_valuable_white_pieces;
         any_game_phase_evaluation -= KNIGHT_BONUS_PER_SQUARE*__builtin_popcountll(possible_moves);
+
+        // outpost
+             //  no enemy pawn ahead                                                                    own pawn protects knight
+        if (!(PASSED_PAWN_BITMASK[1][position] & board.pieces[Constants::Piece::WHITE_PAWN]) && (pawnCaptureBitMask[0][position] & board.pieces[Constants::Piece::BLACK_PAWN])) {
+            eval_info.mg_evaluation -= KNIGHT_OUTPOST;
+        }
 
         // king pressure
         if (attacked_squares & eval_info.white_king_zone_large) {

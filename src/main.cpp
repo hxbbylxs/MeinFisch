@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <Memory.h>
+#include <MoveGeneration.h>
+#include <Output.h>
 
 
 #include "engineUCI.h"
@@ -18,7 +20,7 @@ int main() {
     initializeZobristHashValues();
     initializeSliderAttackBitMask(); //TODO at compiletime
     initializeHistoryHeuristic();
-    
+
 
     engineUCI engine = engineUCI();
     std::string input;

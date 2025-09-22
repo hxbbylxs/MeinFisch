@@ -6,8 +6,10 @@
 #define MOVEPICKING_H
 
 #include <vector>
-#include <cstdint>
-#include "GameBoard.h"
+
+#include "GameBoard.h" // lib game logic
+#include "Move.h"
+
 #include "Memory.h"
 
 enum MoveGenPhase {
@@ -21,17 +23,17 @@ enum MoveGenPhase {
 };
 inline constexpr int NUM_MOVE_GEN_PHASES = 7;
 
-std::vector<uint32_t> pickNextMoves(Data const & savedData, uint32_t counter_candidate, uint32_t killer_candidate, GameBoard const & board, MoveGenPhase & phase);
+std::vector<Move> pickNextMoves(Data const & savedData, Move counter_candidate, Move killer_candidate, GameBoard const & board, MoveGenPhase & phase);
 
-void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board);
-int getMoveScoreEndGame(uint32_t move);
-int getMoveScoreMiddleGame(uint32_t move);
-void mvv_lva_MoveOrdering(std::vector<uint32_t> & pseudoLegalMoves);
+void staticMoveOrdering(std::vector<Move> & pseudoLegalMoves, GameBoard const & board);
+int getMoveScoreEndGame(Move move);
+int getMoveScoreMiddleGame(Move move);
+void mvv_lva_MoveOrdering(std::vector<Move> & pseudoLegalMoves);
 
-int static_exchange_evaluation(int square, bool attacker_is_white, GameBoard & board, Constants::Piece piece_on_square);
-int static_exchange_evaluation(uint32_t move, GameBoard & board);
+int static_exchange_evaluation(unsigned square, bool attacker_is_white, GameBoard & board, Constants::Piece piece_on_square);
+int static_exchange_evaluation(Move move, GameBoard & board);
 
-uint32_t getCheapestAttackMove(GameBoard const & board, bool attacker_is_white, int square, Constants::Piece piece_on_square);
+Move getCheapestAttackMove(GameBoard const & board, bool attacker_is_white, unsigned square, Constants::Piece piece_on_square);
 
 
 #endif //MOVEPICKING_H

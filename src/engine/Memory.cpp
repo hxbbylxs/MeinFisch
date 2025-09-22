@@ -10,15 +10,15 @@
 
 
 // adds calculated data about a position to the transposition table (TT)
-void tryMakeNewEntry(Evaluation_Flag evaluation_flag, int depth, int evaluation, uint32_t bestMove, GameBoard const &board) {
-    int index = board.zobristHash & ((Constants::TTSIZE)-1); // narrowing conversion ok
+void tryMakeNewEntry(Evaluation_Flag evaluation_flag, int depth, int evaluation, Move bestMove, GameBoard const &board) {
+    unsigned index = board.zobristHash & ((Constants::TTSIZE)-1);
     if (newEntryIsBetter(depth,index)) {
         transposition_table[index] = {board.zobristHash,evaluation_flag, depth, evaluation,bestMove};
     }
 }
 
 // compares the quality of an existing TT entry with the new position
-bool newEntryIsBetter(int depth, int index) {
+bool newEntryIsBetter(int depth, unsigned index) {
     transposition_table[index].age--;
     bool isDeeper = depth >= transposition_table[index].depth;
     bool isOld = transposition_table[index].age <= 0;
@@ -27,7 +27,7 @@ bool newEntryIsBetter(int depth, int index) {
 
 //caller has to check if evaluation_flag != empty (dummy)
 Data& getData(uint64_t hash) {
-    int index = hash & ((Constants::TTSIZE)-1); // narrowing conversion ok
+    unsigned index = hash & ((Constants::TTSIZE)-1);
     if (transposition_table[index].zobristHash == hash) {
         return transposition_table[index];
     }
@@ -62,9 +62,8 @@ void clearTT() {
 // History Heuristic
 
 // score is increased when a move causes a cutoff
-void increaseMoveScore(uint32_t move, int depth) {
-    auto mv = decodeMove(move);
-    history_move_scores[mv.from][mv.to] = std::min(history_move_scores[mv.from][mv.to] + depth * depth,100'000);
+void increaseMoveScore(Move move, int depth) {
+    history_move_scores[move.from()][move.to()] = std::min(history_move_scores[move.from()][move.to()] + depth * depth,100'000);
 }
 
 void initializeHistoryHeuristic() {
@@ -81,13 +80,6 @@ void initializeHistoryHeuristic() {
     history_move_scores[62][47] = -10; //g1h3
     history_move_scores[51][35] = 160; //d2d4
     history_move_scores[52][36] = 160; //e2e4
-    /*for (int from = 0; from < Constants::NUM_SQUARES; from++) {
-        for (int to = 0; to < Constants::NUM_SQUARES; to++) {
-            if (to >= 16 && to < 48) history_move_scores[from][to] += 5;
-            if (to%8 == 0 | to%8 == 7) history_move_scores[from][to] -= 5;
-            if (from == 1 || from == 2 || from == 5 || from == 6 || from == 11 || from == 12 || from == 57 || from == 58 || from == 61 || from == 62 || from == 51 || from == 52) history_move_scores[from][to] += 5;
-        }
-    }*/
 }
 
 // in the history heuristic

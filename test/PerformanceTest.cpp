@@ -69,7 +69,7 @@ int testMinimax(int maxRecursionDepth, GameBoard & board) {
 
     int max = -CHECKMATE_VALUE;
 
-    for (uint32_t move : psm) {
+    for (Move move : psm) {
         if (!isLegalMove(move, board)) continue;
         board.applyPseudoLegalMove(move);
         max = std::max(max,-testMinimax(maxRecursionDepth-1, board));
@@ -91,7 +91,7 @@ int testNegamax(int maxRecursionDepth, GameBoard &board, int alpha, int beta) {
 
     int max = -CHECKMATE_VALUE;
 
-    for (uint32_t move : psm) {
+    for (Move move : psm) {
         if (!isLegalMove(move, board)) continue;
         board.applyPseudoLegalMove(move);
         max = std::max(max,-testNegamax(maxRecursionDepth-1, board, -beta,-alpha));

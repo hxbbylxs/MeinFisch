@@ -37,11 +37,11 @@ struct GameBoard {
     bool isCheck(bool whiteKing) const;
     [[nodiscard]]
     bool noLegalMoves() const;
-    void applyPseudoLegalMove(uint32_t move);
-    void unmakeMove(uint32_t move, int enPassant, std::array<bool, 5> castleRights, uint8_t plies, uint64_t hash_before);
-    void updateCastleInformation(Move const & mv);
-    void moveRookForCastle(Constants::Castle castle, bool unmake);
-    void handlePawnSpecialCases(Move const & mv);
+    void applyPseudoLegalMove(Move move);
+    void unmakeMove(Move move, int enPassant, std::array<bool, 5> castleRights, uint8_t plies, uint64_t hash_before);
+    void updateCastleInformation(Move mv);
+    void moveRookForCastle(unsigned castle, bool unmake);
+    void handlePawnSpecialCases(Move mv);
     void addNewBoardPosition(uint64_t hash);
     void removeBoardPosition(uint64_t hash);
 
@@ -56,7 +56,7 @@ template<typename F>
 void forEachPiece(Constants::Piece piece, GameBoard const & board, F operation) {
     uint64_t bitboard = board.pieces[piece];
     while (bitboard != 0) {
-        int position = __builtin_ctzll(bitboard); // extracts last bit
+        auto position = static_cast<unsigned>(__builtin_ctzll(bitboard)); // extracts last bit
         operation(position, board);
         bitboard = bitboard & (bitboard - 1); // removes last bit
     }

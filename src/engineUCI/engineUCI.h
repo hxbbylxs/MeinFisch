@@ -12,7 +12,6 @@ class engineUCI {
     GameBoard convertInputPositionToGameBoard(std::string const & input);
     std::string calcBestMove(std::string const & go);
     void makeMove(std::string const & move, GameBoard & gameBoard);
-    std::string convertMoveToOutput(uint32_t move);
     public:
     void receiveCommand(std::string const & message);
 };

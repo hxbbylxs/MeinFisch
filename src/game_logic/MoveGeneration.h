@@ -17,33 +17,32 @@ enum MoveType {
 };
 
 [[nodiscard]]
-std::vector<uint32_t> getPseudoLegalMoves(GameBoard const & board, bool forWhite, MoveType type);
+std::vector<Move> getPseudoLegalMoves(GameBoard const & board, bool forWhite, MoveType type);
 
 
-void addPseudoLegalPawnMoves(GameBoard const & board, bool forWhite, std::vector<uint32_t> & pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, MoveType type);
-void addPseudoLegalPawnCaptureMoves(GameBoard const &board, bool forWhite, std::vector<uint32_t> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, Constants::Piece piece, int from);
-void addPseudoLegalPawnPushMoves(GameBoard const &board, bool forWhite, std::vector<uint32_t> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, Constants::Piece piece, int from);
+void addPseudoLegalPawnMoves(GameBoard const & board, bool forWhite, std::vector<Move> & pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, MoveType type);
+void addPseudoLegalPawnCaptureMoves(GameBoard const &board, bool forWhite, std::vector<Move> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, Constants::Piece piece, unsigned from);
+void addPseudoLegalPawnPushMoves(GameBoard const &board, bool forWhite, std::vector<Move> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, Constants::Piece piece, unsigned from);
 
-void addPseudoLegalPromotionMoves(std::vector<uint32_t> & pseudoLegalMoves, uint32_t move, bool forWhite);
-void addPseudoLegalCastleMoves(GameBoard const &board, bool forWhite, std::vector<uint32_t> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces);
+void addPseudoLegalPromotionMoves(std::vector<Move> & pseudoLegalMoves, Move move, bool forWhite);
+void addPseudoLegalCastleMoves(GameBoard const &board, bool forWhite, std::vector<Move> &pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces);
 
 template <typename F>
 void addPseudoLegalGenericPieceTypeMoves( GameBoard const &board,
                                 bool forWhite,
-                                std::vector<uint32_t> &pseudoLegalMoves,
+                                std::vector<Move> &pseudoLegalMoves,
                                 uint64_t ownPieces,
                                 uint64_t enemyPieces,
                                 Constants::Piece piece,
                                 F getAttackBitMask,
                                 MoveType type);
 
-Constants::Piece getPieceAt(GameBoard const & board, int position, bool pieceIsWhite);
+Constants::Piece getPieceAt(GameBoard const & board, unsigned position, bool pieceIsWhite);
 
-bool isLegalMove(uint32_t move, GameBoard & board);
-bool isPseudoLegalMove(uint32_t move, GameBoard const & board);
-bool isSquareAttacked(int square, bool attacker_is_white, GameBoard const & board);
-bool isCastlingThroughCheck(uint32_t move, GameBoard const & board);
-uint32_t getCompleteMove(GameBoard const & board, uint32_t input_move);
+bool isLegalMove(Move move, GameBoard & board);
+bool isPseudoLegalMove(Move move, GameBoard const & board);
+bool isSquareAttacked(unsigned square, bool attacker_is_white, GameBoard const & board);
+bool isCastlingThroughCheck(Move move, GameBoard const & board);
 
 
 

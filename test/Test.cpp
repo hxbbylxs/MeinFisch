@@ -23,10 +23,10 @@
 // testing only this particular FEN
 void testMoveGeneration() {
     GameBoard board = convertFENtoGameBoard("4k2r/Ppq5/8/R2bpP2/n5P1/3r1B1N/1pP1Q3/R3K3 w Qk e6 0 1");
-    std::vector<uint32_t> whiteMoves = getPseudoLegalMoves(board, true,ALL);
-    std::vector<uint32_t> blackMoves = getPseudoLegalMoves(board, false,ALL);
+    std::vector<Move> whiteMoves = getPseudoLegalMoves(board, true,ALL);
+    std::vector<Move> blackMoves = getPseudoLegalMoves(board, false,ALL);
 
-    std:: vector<uint32_t> whiteCorrectSolution = { 9437313, 7340161, 5243009, 3145857,
+    std:: vector<Move> whiteCorrectSolution = { 9437313, 7340161, 5243009, 3145857,
                                                     330193, 344529, 492129, 713505,
                                                     688929, 557857, 449237, 590549,
                                                     885461, 1032917, 262535, 409991,
@@ -38,7 +38,7 @@ void testMoveGeneration() {
                                                     606963, 869107, 1016563, 836555,
                                                     869323, 967627, 1000395, 17728459};
 
-    std::vector<uint32_t> blackCorrectSolution = {  278674, 409746, 590274, 11411218,
+    std::vector<Move> blackCorrectSolution = {  278674, 409746, 590274, 11411218,
                                                     9314066, 7216914, 5119762, 11420434,
                                                     9323282, 7226130, 5128978, 98742,
                                                     213430, 295350, 328118, 557494,
@@ -57,7 +57,7 @@ void testMoveGeneration() {
         std::cout << "Test failed: move generation" << std::endl;
         return;
     }
-    for (uint32_t move : whiteMoves) {
+    for (Move move : whiteMoves) {
         auto it = find(whiteCorrectSolution.begin(), whiteCorrectSolution.end(), move);
         if (it == whiteCorrectSolution.end()) {
             std::cout << "Test failed: move generation" << std::endl;
@@ -68,7 +68,7 @@ void testMoveGeneration() {
         std::cout << "Test failed: move generation" << std::endl;
         return;
     }
-    for (uint32_t move : blackMoves) {
+    for (Move move : blackMoves) {
         auto it = find(blackCorrectSolution.begin(), blackCorrectSolution.end(), move);
         if (it == blackCorrectSolution.end()) {
             std::cout << "Test failed: move generation" << std::endl;
@@ -85,8 +85,8 @@ void testLegalMoveCheck() {
 
     GameBoard board = convertFENtoGameBoard("3rk3/4q3/8/8/6nb/4P3/5P2/R3K2R w KQq - 0 1");
 
-    std::vector<uint32_t> expectedIllegal = {738129,607057,836555,967627,17728459};
-    std::vector<uint32_t> expectedLegal = {852939,1000395,34571211,771063};
+    std::vector<Move> expectedIllegal = {738129,607057,836555,967627,17728459};
+    std::vector<Move> expectedLegal = {852939,1000395,34571211,771063};
 
     for (auto move : expectedLegal) {
         if (!isLegalMove(move,board)) {
@@ -162,7 +162,7 @@ void testSEE() {
     printGameBoard(board);
     auto psm = getPseudoLegalMoves(board,board.whiteToMove,ALL);
     for (auto move : psm) {
-        printCompleteMove(decodeMove(move));
+        printCompleteMove(move);
         std::cout << "SEE: " << static_exchange_evaluation(move,board) << std::endl;
     }
 }

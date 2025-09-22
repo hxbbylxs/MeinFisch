@@ -28,6 +28,7 @@ inline constexpr int PAWN_IN_SMALL_KING_ZONE = 5;
 inline constexpr int PAWN_IN_LARGE_KING_ZONE = 2;
 
 inline constexpr int KNIGHT_BONUS_PER_SQUARE = 3;
+inline constexpr int KNIGHT_OUTPOST = 15;
 inline constexpr int KNIGHT_IN_SMALL_KING_ZONE = 10;
 inline constexpr int KNIGHT_IN_LARGE_KING_ZONE = 5;
 

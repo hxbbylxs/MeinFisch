@@ -60,17 +60,19 @@ void printBitBoard(uint64_t number) {
 }
 
 // prints detailed information about a move
-// IMPORTANT: the check flag is not set when generating a move. I might want to discard it because it makes more sense
-//              to only test if the move is legal when I actually need it as it is an expensive operation
-void printCompleteMove(Move const & move) {
+void printCompleteMove(Move move) {
+    auto piece = static_cast<Constants::Piece>(move.piece());
+    auto capture = static_cast<Constants::Piece>(move.capture());
+    auto promotion = static_cast<Constants::Piece>(move.promotion());
+    auto castle = static_cast<Constants::Castle>(move.castle());
+
     cout << endl;
-    cout << "Piece: " << toString(move.piece) << endl;
-    cout << "From: " << convertIntToPosition(move.from) << endl;
-    cout << "To: " << convertIntToPosition(move.to) << endl;
-    cout << "Capture: " << toString(move.captured_piece) << endl;
-    cout << "Promotion: " << toString(move.pawn_promote_to) << endl;
-    cout << "Castle: " << toString(move.castle) << endl;
-    cout << "Check: " << (move.check?"true":"false") << endl;
+    cout << "Piece: " << toString(piece) << endl;
+    cout << "From: " << convertIntToPosition(move.from()) << endl;
+    cout << "To: " << convertIntToPosition(move.to()) << endl;
+    cout << "Capture: " << toString(capture) << endl;
+    cout << "Promotion: " << toString(promotion) << endl;
+    cout << "Castle: " << toString(castle) << endl;
 }
 
 
@@ -84,9 +86,9 @@ std::string evaluationToString(int evaluation) {
     return "cp " + std::to_string(evaluation);
 }
 
-void printAnalysisData(std::pair<uint32_t,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes, std::string const & pv) {
+void printAnalysisData(std::pair<Move,int> const & move, int depth, int seldepth, std::chrono::time_point<std::chrono::system_clock> start, int nodes, std::string const & pv) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
-    int time = duration.count();
+    auto time = duration.count();
     auto const & [mv,evaluation] = move;
     cout << "info depth " << depth << " seldepth " << seldepth << " score " << evaluationToString(evaluation)
             << "  pv "   << pv << " time " << time << " nodes " << nodes << " nps " << (time != 0 ? (nodes/time)*1000 : 0) <<endl;

@@ -5,13 +5,11 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include <vector>
 #include <array>
 #include <utility>
-#include <cstdint>
 
 #include "GameBoard.h"
-#include "Memory.h"
+#include "Move.h"
 
 
 
@@ -22,9 +20,9 @@ inline std::array<int,Constants::MAX_RECURSION_DEPTH> evaluated_positions_in_qui
 void startTimeLimit(int timeLimit);
 void playerControlledTimeLimit(int ignore);
 
-std::pair<uint32_t,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth);
-std::pair<uint32_t,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth);
-int negaMax(GameBoard  & board, int maxRecursionDepth, int alpha, int beta, int depth, uint32_t previous_move); // searches all moves (expected bad ones lower depth)
+std::pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth);
+std::pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth);
+int negaMax(GameBoard  & board, int maxRecursionDepth, int alpha, int beta, int depth, Move previous_move); // searches all moves (expected bad ones lower depth)
 int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth); // searches only captures
 
 std::string reconstructPV(GameBoard & board);

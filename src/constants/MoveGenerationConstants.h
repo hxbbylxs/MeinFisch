@@ -193,21 +193,21 @@ inline std::array<std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS>,Constants::N
     }();
 
 
-    inline auto getRookAttackBits = [](int from, uint64_t pieceOccupancy) {
+    inline auto getRookAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         uint64_t const blockerBitMask = nonDiagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & blockerBitMask;
         uint64_t magicIndex = blockerCombination * magicNumbersForNonDiagonalSliders[from] >> (64 - __builtin_popcountll(blockerBitMask));
         uint64_t possibleMoves = nonDiagonalSlidersAttackBitMask[from][magicIndex];
         return possibleMoves;
     };
-    inline auto getBishopAttackBits = [](int from, uint64_t pieceOccupancy) {
+    inline auto getBishopAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         uint64_t const blockerBitmask = diagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & blockerBitmask;
         uint64_t magicIndex = blockerCombination * magicNumbersForDiagonalSliders[from] >> (64 - __builtin_popcountll(blockerBitmask));
         uint64_t possibleMoves = diagonalSlidersAttackBitMask[from][magicIndex];
         return possibleMoves;
     };
-    inline auto getQueenAttackBits = [](int from, uint64_t pieceOccupancy) {
+    inline auto getQueenAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         uint64_t const d_blockerBitmask = diagonalSliderBlockerBitMasks[from];
         uint64_t const nd_blockerBitmask = nonDiagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & nd_blockerBitmask;
@@ -219,10 +219,10 @@ inline std::array<std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS>,Constants::N
         return possibleMoves;
     };
 
-    inline auto getKnightAttackBits = [](int from, uint64_t pieceOccupancy) {
+    inline auto getKnightAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         return knightAttackBitMasks[from];
     };
-    inline auto getKingAttackBits = [](int from, uint64_t pieceOccupancy) {
+    inline auto getKingAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         return kingAttackBitMasks[from];
     };
 

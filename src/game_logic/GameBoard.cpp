@@ -90,43 +90,42 @@ bool GameBoard::isCheck(bool whiteKing) const {
     return isSquareAttacked(king_position,!whiteKing,*this);
 }
 
-void GameBoard::applyPseudoLegalMove(uint32_t move) {
+void GameBoard::applyPseudoLegalMove(Move move) {
 
     assert(isPseudoLegalMove(move,*this));
 
     if (!whiteToMove) moves++;
     plies++;
-    Move mv = decodeMove(move);
 
     // remove piece from its square
-    pieces[mv.piece] &= ~(1ULL << mv.from);
-    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.from][mv.piece];
-    if (whiteToMove) white_pieces &= ~(1ULL << mv.from);
-    else black_pieces &= ~(1ULL << mv.from);
+    pieces[move.piece()] &= ~(1ULL << move.from());
+    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.from()][move.piece()];
+    if (whiteToMove) white_pieces &= ~(1ULL << move.from());
+    else black_pieces &= ~(1ULL << move.from());
 
     // put piece on new square
-    pieces[mv.piece] |= (1ULL << mv.to);
-    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.piece];
-    if (whiteToMove) white_pieces |= (1ULL << mv.to);
-    else black_pieces |= (1ULL << mv.to);
+    pieces[move.piece()] |= (1ULL << move.to());
+    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()][move.piece()];
+    if (whiteToMove) white_pieces |= (1ULL << move.to());
+    else black_pieces |= (1ULL << move.to());
 
     // remove captured piece (en passant is handled later, zobrist hash change has to be unmade then)
-    pieces[mv.captured_piece] &= ~(1ULL << mv.to);
-    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
-    if (whiteToMove) black_pieces &= ~(1ULL << mv.to);
-    else white_pieces &= ~(1ULL << mv.to);
+    pieces[move.capture()] &= ~(1ULL << move.to());
+    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()][move.capture()];
+    if (whiteToMove) black_pieces &= ~(1ULL << move.to());
+    else white_pieces &= ~(1ULL << move.to());
 
     // adjust captured piece in en passant case
-    if (mv.to == enPassant && mv.captured_piece != Constants::Piece::NONE) {
+    if (move.to() == enPassant && move.capture() != Constants::Piece::NONE) {
         // unmake previous changes because captured pawn is not standing on mv.to
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.captured_piece];
-        int offset = whiteToMove ? 8 : -8;
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()][move.capture()];
+        int offset = whiteToMove ? Constants::SOUTH : Constants::NORTH;
         //remove pawn captured pawn from the square above/below
-        pieces[mv.captured_piece] &= ~(1ULL << mv.to+offset);
-        if (whiteToMove) black_pieces &= ~(1ULL << mv.to+offset);
-        else white_pieces &= ~(1ULL << mv.to+offset);
+        pieces[move.capture()] &= ~(1ULL << move.to()+offset);
+        if (whiteToMove) black_pieces &= ~(1ULL << move.to()+offset);
+        else white_pieces &= ~(1ULL << move.to()+offset);
 
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to+offset][mv.captured_piece];
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()+offset][move.capture()];
     }
 
     // reset old en passant
@@ -134,16 +133,16 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
     enPassant = -1;
 
     // promotions and setting new en passant square
-    if (mv.piece == Constants::WHITE_PAWN || mv.piece == Constants::BLACK_PAWN) {
+    if (move.piece() == Constants::WHITE_PAWN || move.piece() == Constants::BLACK_PAWN) {
         plies = 0;
-        handlePawnSpecialCases(mv);
+        handlePawnSpecialCases(move);
     }
-    if (mv.castle) {
-        moveRookForCastle(mv.castle,false);
+    if (move.castle()) {
+        moveRookForCastle(move.castle(),false);
     }
-    updateCastleInformation(mv);
+    updateCastleInformation(move);
 
-    if (mv.captured_piece != Constants::Piece::NONE) plies = 0;
+    if (move.capture() != Constants::Piece::NONE) plies = 0;
 
     whiteToMove = !whiteToMove;
     zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[0]; // switch player to move
@@ -152,24 +151,24 @@ void GameBoard::applyPseudoLegalMove(uint32_t move) {
     addNewBoardPosition(zobristHash);
 }
 
-void GameBoard::handlePawnSpecialCases(Move const & mv) {
-    if (mv.pawn_promote_to != Constants::Piece::NONE) {
+void GameBoard::handlePawnSpecialCases(Move move) {
+    if (move.promotion() != Constants::Piece::NONE) {
         // remove pawn from the square it has previously been set to
-        pieces[mv.piece] &= ~(1ULL << mv.to);
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.piece];
+        pieces[move.piece()] &= ~(1ULL << move.to());
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()][move.piece()];
 
         // put the new piece on that square
-        pieces[mv.pawn_promote_to] |= (1ULL << mv.to);
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[mv.to][mv.pawn_promote_to];
+        pieces[move.promotion()] |= (1ULL << move.to());
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[move.to()][move.promotion()];
     }
-    if (mv.from == mv.to +16 || mv.from == mv.to -16) {
+    if (move.from() == move.to() +16 || move.from() == move.to() -16) {
         // in case of double push, set enPassant to the square in between
-        enPassant =  (mv.from+mv.to)/2;
+        enPassant =  static_cast<int>((move.from() + move.to())/2);
         zobristHash ^= Constants::ZOBRIST_HASH_VALUES_ENPASSANT[enPassant%8];
     }
 }
 
-void GameBoard::moveRookForCastle(Constants::Castle castle, bool unmake) {
+void GameBoard::moveRookForCastle(unsigned castle, bool unmake) {
 
     if (castle == Constants::Castle::WHITE_KING_SIDE_CASTLE || castle == Constants::Castle::WHITE_QUEEN_SIDE_CASTLE) {
         //case white castles
@@ -191,74 +190,73 @@ void GameBoard::moveRookForCastle(Constants::Castle castle, bool unmake) {
     }
 }
 
-void GameBoard::updateCastleInformation(Move const & mv) {
-    if (mv.piece == Constants::WHITE_KING) {
+void GameBoard::updateCastleInformation(Move move) {
+    if (move.piece() == Constants::WHITE_KING) {
         if (castleInformation[Constants::Castle::WHITE_KING_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::WHITE_KING_SIDE_CASTLE];
         castleInformation[Constants::Castle::WHITE_KING_SIDE_CASTLE] = false;
         if (castleInformation[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE];
         castleInformation[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE] = false;
     }
-    if (mv.piece == Constants::BLACK_KING) {
+    if (move.piece() == Constants::BLACK_KING) {
         if (castleInformation[Constants::Castle::BLACK_KING_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::BLACK_KING_SIDE_CASTLE];
         castleInformation[Constants::Castle::BLACK_KING_SIDE_CASTLE] = false;
         if (castleInformation[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE];
         castleInformation[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE] = false;
     }
-    if (mv.to == 0 || mv.from == 0) {
+    // TODO replace magic numbers
+    if (move.to() == 0 || move.from() == 0) {
         if (castleInformation[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE];
         castleInformation[Constants::Castle::BLACK_QUEEN_SIDE_CASTLE] = false;
     }
-    if (mv.to == 7 || mv.from == 7) {
+    if (move.to() == 7 || move.from() == 7) {
         if (castleInformation[Constants::Castle::BLACK_KING_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::BLACK_KING_SIDE_CASTLE];
         castleInformation[Constants::Castle::BLACK_KING_SIDE_CASTLE] = false;
     }
-    if (mv.to == 56 || mv.from == 56) {
+    if (move.to() == 56 || move.from() == 56) {
         if (castleInformation[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE];
         castleInformation[Constants::Castle::WHITE_QUEEN_SIDE_CASTLE] = false;
     }
-    if (mv.to == 63 || mv.from == 63) {
+    if (move.to() == 63 || move.from() == 63) {
         if (castleInformation[Constants::Castle::WHITE_KING_SIDE_CASTLE]) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[Constants::Castle::WHITE_KING_SIDE_CASTLE];
         castleInformation[Constants::Castle::WHITE_KING_SIDE_CASTLE] = false;
     }
 }
 
-void GameBoard::unmakeMove(uint32_t move, int enPassant_, std::array<bool, 5> castleRights, uint8_t plies_before, uint64_t hash_before) {
+void GameBoard::unmakeMove(Move move, int enPassant_, std::array<bool, 5> castleRights, uint8_t plies_before, uint64_t hash_before) {
 
     removeBoardPosition(zobristHash); // removes board position from the saved positions for threefold rep
-
-    Move mv = decodeMove(move);
 
     castleInformation = castleRights;
     plies = plies_before;
     if (whiteToMove) moves--;
 
     // remove piece from the target square
-    pieces[mv.piece] &= ~(1ULL << mv.to);
-    if (mv.pawn_promote_to != Constants::Piece::NONE) {
-        pieces[mv.pawn_promote_to] &= ~(1ULL << mv.to);
+    pieces[move.piece()] &= ~(1ULL << move.to());
+    if (move.promotion() != Constants::Piece::NONE) {
+        pieces[move.promotion()] &= ~(1ULL << move.to());
     }
-    if (whiteToMove) black_pieces &= ~(1ULL << mv.to);
-    else white_pieces &= ~(1ULL << mv.to);
+    if (whiteToMove) black_pieces &= ~(1ULL << move.to());
+    else white_pieces &= ~(1ULL << move.to());
 
     // add piece to the original square
-    pieces[mv.piece] |= (1ULL << mv.from);
-    if (whiteToMove) black_pieces |= (1ULL << mv.from);
-    else white_pieces |= (1ULL << mv.from);
+    pieces[move.piece()] |= (1ULL << move.from());
+    if (whiteToMove) black_pieces |= (1ULL << move.from());
+    else white_pieces |= (1ULL << move.from());
 
     // put captured piece back on the target square
-    if (mv.captured_piece != Constants::Piece::NONE) {
-        if (enPassant_ == mv.to) {
-            int offset = whiteToMove ? -8 : 8;
-            pieces[mv.captured_piece] |= (1ULL << mv.to+offset);
-            if (whiteToMove) white_pieces |= (1ULL << mv.to+offset);
-            else black_pieces |= (1ULL << mv.to+offset);
+    if (move.capture() != Constants::Piece::NONE) {
+        if (enPassant_ == move.to()) {
+            int offset = whiteToMove ? Constants::NORTH : Constants::SOUTH;
+            pieces[move.capture()] |= (1ULL << move.to() + offset);
+            if (whiteToMove) white_pieces |= (1ULL << move.to() + offset);
+            else black_pieces |= (1ULL << move.to() + offset);
         } else {
-            pieces[mv.captured_piece] |= (1ULL << mv.to);
-            if (whiteToMove) white_pieces |= (1ULL << mv.to);
-            else black_pieces |= (1ULL << mv.to);
+            pieces[move.capture()] |= (1ULL << move.to());
+            if (whiteToMove) white_pieces |= (1ULL << move.to());
+            else black_pieces |= (1ULL << move.to());
         }
     }
-    if (mv.castle) moveRookForCastle (mv.castle,true);
+    if (move.castle()) moveRookForCastle (move.castle(),true);
 
     enPassant = enPassant_;
     whiteToMove = !whiteToMove;
@@ -268,9 +266,9 @@ void GameBoard::unmakeMove(uint32_t move, int enPassant_, std::array<bool, 5> ca
 
 
 bool GameBoard::noLegalMoves() const {
-    vector<uint32_t> pseudoLegalMoves = getPseudoLegalMoves(*this, whiteToMove,ALL);
+    vector<Move> pseudoLegalMoves = getPseudoLegalMoves(*this, whiteToMove,ALL);
     auto copy = GameBoard(*this);
-    return !std::any_of(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[copy](uint32_t move) mutable {
+    return !std::any_of(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[copy](Move move) mutable {
         return isLegalMove(move,copy);
     });
 }

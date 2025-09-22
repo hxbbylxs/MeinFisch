@@ -38,9 +38,9 @@ int convertPositionStringToInt(std::string const & position) {
     return -1;
 }
 std::string convertIntToPosition(uint8_t position) {
-    char letter = position%8 + 'a';
-    char number = 8- position/8+'0';
-    return std::string(1, letter) + std::string(1, number);
+    auto file = static_cast<char>('a' + (position % 8));
+    auto rank = static_cast<char>('8' - (position / 8));
+    return {file, rank};
 }
 
 bool isChessLetter(char letter) {
@@ -107,18 +107,11 @@ std::string toString(Constants::Castle castle) {
     return "-";
 }
 
-/*std::string toString(Player const & player) {
-    if (typeid(player) == typeid(Human)) return "Human";
-    if (typeid(player) == typeid(Computer)) return "Computer";
-    if (typeid(player) == typeid(ComputerAssistHuman)) return "Analysis";
-    return "Unknown";
-}*/
 
-std::string longAlgebraicNotation(uint32_t move) {
-    std::string result = convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::FROM])>>4)+
-        convertIntToPosition((move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::TO])>>14);
-    if (move & Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION]) {
-        result += (Constants::PROMOTION_STRING[(move&Constants::move_decoding_bitmasks[Constants::MoveDecoding::PROMOTION])>>20]);
+std::string longAlgebraicNotation(Move move) {
+    std::string result = convertIntToPosition(move.from()) + convertIntToPosition(move.to());
+    if (move.promotion()) {
+        result += (Constants::PROMOTION_STRING[move.promotion()]);
     }
     return result;
 }

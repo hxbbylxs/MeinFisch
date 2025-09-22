@@ -5,7 +5,8 @@
 
 #include "Movepicking.h"
 
-#include <Output.h>
+#include <iostream>
+#include <cassert>
 
 #include "Memory.h"
 
@@ -21,11 +22,12 @@ using Constants::MoveDecoding;
 
 // generates next moves only when necessary (lazy move generation)
 // example: no need to generate all quiet moves when a capture move already causes a cutoff
-std::vector<uint32_t> pickNextMoves(Data const &savedData,uint32_t counter_candidate ,uint32_t killer_candidate, GameBoard const &board, MoveGenPhase & phase) {
-    std::vector<uint32_t> moves;
+std::vector<Move> pickNextMoves(Data const &savedData,Move counter_candidate ,Move killer_candidate, GameBoard const &board, MoveGenPhase & phase) {
+    std::vector<Move> moves;
     switch (phase) {
         case TTMove:
                 if (savedData.evaluationFlag != EMPTY) {
+                    assert(isPseudoLegalMove(savedData.bestMove,board));
                     return {savedData.bestMove};
                 }
             phase = Good_Captures;
@@ -56,15 +58,14 @@ std::vector<uint32_t> pickNextMoves(Data const &savedData,uint32_t counter_candi
 }
 
 
-void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard const & board) {
+void staticMoveOrdering(std::vector<Move> & pseudoLegalMoves, GameBoard const & board) {
 
     if (false) {
-        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](Move a, Move b) {
      return getMoveScoreEndGame(a) > getMoveScoreEndGame(b);
  });
     } else {
-
-        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
+        std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](Move a, Move b) {
     return getMoveScoreMiddleGame(a) > getMoveScoreMiddleGame(b);
 });
     }
@@ -72,11 +73,11 @@ void staticMoveOrdering(std::vector<uint32_t> & pseudoLegalMoves, GameBoard cons
 
 // 1. Queen Promo 2. history score 3. other Promo
 // will be used only for quiet moves
-int getMoveScoreMiddleGame(uint32_t move) {
-    Move mv = decodeMove(move);
-    int score = history_move_scores[mv.from][mv.to];
-    if (mv.pawn_promote_to) {
-        if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
+int getMoveScoreMiddleGame(Move move) {
+
+    int score = history_move_scores[move.from()][move.to()];
+    if (move.promotion()) {
+        if (move.promotion() == Constants::WHITE_QUEEN || move.promotion() == Constants::BLACK_QUEEN) {
             score += 1'000'000;
         } else {
             score = 0;
@@ -89,12 +90,12 @@ int getMoveScoreMiddleGame(uint32_t move) {
 
 // 1. Queen Promo 2. MVP 4. Other Promo
 // will be used only for quiet moves
-int getMoveScoreEndGame(uint32_t move) {
-    Move mv = decodeMove(move);
-    int score = abs(STATIC_MG_PIECE_VALUES[(mv.piece)]);
-    if (mv.piece == Constants::WHITE_KING || mv.piece == Constants::BLACK_KING) score += 400;
-    if (mv.pawn_promote_to) {
-        if (mv.pawn_promote_to == Constants::WHITE_QUEEN || mv.pawn_promote_to == Constants::BLACK_QUEEN) {
+int getMoveScoreEndGame(Move move) {
+
+    int score = abs(STATIC_MG_PIECE_VALUES[(move.piece())]);
+    if (move.piece() == Constants::WHITE_KING || move.piece() == Constants::BLACK_KING) score += 400;
+    if (move.promotion()) {
+        if (move.promotion() == Constants::WHITE_QUEEN || move.promotion() == Constants::BLACK_QUEEN) {
             score += 1'000'000;
         } else {
             score = 0;
@@ -104,18 +105,18 @@ int getMoveScoreEndGame(uint32_t move) {
 }
 
 
-void mvv_lva_MoveOrdering(std::vector<uint32_t> & pseudoLegalMoves) {
-    std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](uint32_t a, uint32_t b) {
-        int score_a = 5*abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & a) >> 10]) - abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::PIECE] & a)]);
-        int score_b = 5*abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & b) >> 10]) - abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::PIECE] & b)]);
+void mvv_lva_MoveOrdering(std::vector<Move> & pseudoLegalMoves) {
+    std::sort(pseudoLegalMoves.begin(), pseudoLegalMoves.end(),[](Move a, Move b) {
+        int score_a = 5*abs(STATIC_MG_PIECE_VALUES[a.capture()]) - abs(STATIC_MG_PIECE_VALUES[a.piece()]);
+        int score_b = 5*abs(STATIC_MG_PIECE_VALUES[b.capture()]) - abs(STATIC_MG_PIECE_VALUES[b.piece()]);
         return score_a > score_b;
     });
 }
 
-int static_exchange_evaluation(int square, bool attacker_is_white, GameBoard & board, Constants::Piece piece_on_square) {
+int static_exchange_evaluation(unsigned square, bool attacker_is_white, GameBoard & board, Constants::Piece piece_on_square) {
 
-    uint32_t attack_move = getCheapestAttackMove(board,attacker_is_white,square,piece_on_square);
-    if (attack_move == 0) return 0;
+    Move attack_move = getCheapestAttackMove(board,attacker_is_white,square,piece_on_square);
+    if (attack_move.value == 0) return 0;
 
     //Data for unmaking the move
     int plies = board.plies;
@@ -123,10 +124,10 @@ int static_exchange_evaluation(int square, bool attacker_is_white, GameBoard & b
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
-    int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[(move_decoding_bitmasks[MoveDecoding::CAPTURE] & attack_move) >> 10]);
-    Constants::Piece piece_attacking = static_cast<Constants::Piece>(move_decoding_bitmasks[MoveDecoding::PIECE] & attack_move);
-    if (attack_move & move_decoding_bitmasks[MoveDecoding::PROMOTION]) {
-        piece_attacking = static_cast<Constants::Piece>((move_decoding_bitmasks[MoveDecoding::PROMOTION] & attack_move) >> 20);
+    int captured_piece_value = abs(STATIC_MG_PIECE_VALUES[attack_move.capture()]);
+    auto piece_attacking = static_cast<Constants::Piece>(attack_move.piece());
+    if (attack_move.promotion()) {
+        piece_attacking = static_cast<Constants::Piece>(attack_move.promotion());
     }
 
     board.applyPseudoLegalMove(attack_move);
@@ -135,8 +136,7 @@ int static_exchange_evaluation(int square, bool attacker_is_white, GameBoard & b
     return value;
 }
 
-int static_exchange_evaluation(uint32_t move, GameBoard & board) {
-    Move mv = decodeMove(move);
+int static_exchange_evaluation(Move move, GameBoard & board) {
 
     //Data for unmaking the move
     int plies = board.plies;
@@ -146,14 +146,14 @@ int static_exchange_evaluation(uint32_t move, GameBoard & board) {
 
     board.applyPseudoLegalMove(move);
 
-    Constants::Piece piece_on_square = mv.pawn_promote_to ? mv.pawn_promote_to : mv.piece;
+    auto piece_on_square = static_cast<Constants::Piece>(move.promotion() ? move.promotion() : move.piece());
 
-    int value = abs(STATIC_MG_PIECE_VALUES[mv.captured_piece]) - static_exchange_evaluation(mv.to,board.whiteToMove,board,piece_on_square);
+    int value = abs(STATIC_MG_PIECE_VALUES[move.capture()]) - static_exchange_evaluation(move.to(),board.whiteToMove,board,piece_on_square);
     board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
     return value;
 }
 
-uint32_t getCheapestAttackMove(GameBoard const &board, bool attacker_is_white, int square, Constants::Piece piece_on_square) {
+Move getCheapestAttackMove(GameBoard const &board, bool attacker_is_white, unsigned square, Constants::Piece piece_on_square) {
 
     uint64_t enemy_pieces = board.whiteToMove ? board.black_pieces : board.white_pieces;
     uint64_t all_pieces = board.white_pieces | board.black_pieces;
