@@ -5,7 +5,7 @@ A chess engine in **C++** built with **CMake**. <br><br>
 
 ## Requirements
 
-- C++20-compatible Compiler  
+- C++ Compiler with support of GCC/Clang builtins
 - CMake (>= 3.30)  
 
 ## Compiling
