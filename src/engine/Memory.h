@@ -65,5 +65,4 @@ void initializeHistoryHeuristic();
 int getMaxHistoryScore();
 
 
-
 #endif //MEMORY_H

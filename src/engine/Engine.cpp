@@ -166,7 +166,7 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
                     currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move);
                     break;
                 case Good_Quiets:
-                    if (!isCheck && move_number > 5 && num_pieces >= 14) {
+                    if (!isCheck && move_number > 5) {
                         // late move reduction
                         lmr_attempts++;
                         currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move);
@@ -176,7 +176,7 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
                     if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
-                    if (!isCheck && num_pieces >= 14) {
+                    if (!isCheck) {
                         lmr_attempts++;
                         currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move);
                         if (currentValue <= alpha) research_necessary = false;
@@ -298,8 +298,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                     currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move);
                     break;
                 case Good_Quiets:
-                    if (!isCheck && move_number > 2 && num_pieces >= 14) {
-                        // late move reduction
+                    if (!isCheck && move_number > 2) {
                         lmr_attempts++;
                         currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
                     } else {
@@ -308,11 +307,11 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                     if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
-                    if (!isCheck && (maxRecursionDepth < 3 || depth > 6) && num_pieces >= 14) {
+                    if (!isCheck && (maxRecursionDepth < 3 || depth > 6)) {
                         lmr_attempts++;
                         currentValue = -quiscenceSearch(board,0,(-(alpha+1)),(-alpha),depth+1);
                         if (currentValue <= alpha) research_necessary = false;
-                    } else if (!isCheck && num_pieces >= 14) {
+                    } else if (!isCheck) {
                         lmr_attempts++;
                         currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
                         if (currentValue <= alpha) research_necessary = false;
