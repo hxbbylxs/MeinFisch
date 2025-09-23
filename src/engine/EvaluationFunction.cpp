@@ -126,14 +126,18 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
             }
         }
 
-        // passed, doubled, isolated pawn
+        // passed pawn
         if (!(PASSED_PAWN_BITMASK[0][position] & board.pieces[Constants::Piece::BLACK_PAWN])) {
             eval_info.mg_evaluation += PAWN_PASSED_MG[position/8];
             eval_info.eg_evaluation += PAWN_PASSED_EG[position/8];
         }
+        // isolated and backward pawn
         if (!(ISOLATED_PAWN_BITMASK[position&7] & board.pieces[Constants::Piece::WHITE_PAWN])) {
             any_game_phase_evaluation += PAWN_ISOLATED;
+        } else if ((game_board.black_pieces & (1ULL << (position+Constants::NORTH))) && !(PASSED_PAWN_BITMASK[1][position] & board.pieces[Constants::Piece::WHITE_PAWN])) {
+            any_game_phase_evaluation += PAWN_BACKWARD;
         }
+        // doubled pawn
         if (__builtin_popcountll(board.pieces[Constants::WHITE_PAWN] & LINE_BITMASKS[position&7]) > 1) any_game_phase_evaluation += PAWN_DOUBLED;
     });
     forEachPiece(Constants::BLACK_PAWN,board,[&](int position, GameBoard const & game_board) {
@@ -160,6 +164,8 @@ void evaluatePawns(GameBoard const &board, EvalInfo & eval_info) {
         }
         if (!(ISOLATED_PAWN_BITMASK[position&7] & board.pieces[Constants::Piece::BLACK_PAWN])) {
             any_game_phase_evaluation -= PAWN_ISOLATED;
+        } else if ((game_board.white_pieces & (1ULL << (position+Constants::SOUTH))) && !(PASSED_PAWN_BITMASK[0][position] & board.pieces[Constants::Piece::BLACK_PAWN])) {
+            any_game_phase_evaluation -= PAWN_BACKWARD;
         }
         if (__builtin_popcountll(board.pieces[Constants::BLACK_PAWN] & LINE_BITMASKS[position&7]) > 1) any_game_phase_evaluation -= PAWN_DOUBLED;
     });
@@ -188,7 +194,7 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
 
         // outpost
              //  no enemy pawn ahead                                                                    own pawn protects knight
-        if (!(PASSED_PAWN_BITMASK[0][position] & board.pieces[Constants::Piece::BLACK_PAWN]) && (pawnCaptureBitMask[1][position] & board.pieces[Constants::Piece::WHITE_PAWN])) {
+        if (!(PASSED_PAWN_BITMASK[0][position] & ISOLATED_PAWN_BITMASK[position&7] & board.pieces[Constants::Piece::BLACK_PAWN]) && (pawnCaptureBitMask[1][position] & board.pieces[Constants::Piece::WHITE_PAWN])) {
             eval_info.mg_evaluation += KNIGHT_OUTPOST;
         }
 
@@ -216,7 +222,7 @@ void evaluateKnights(GameBoard const &board, EvalInfo & eval_info) {
 
         // outpost
              //  no enemy pawn ahead                                                                    own pawn protects knight
-        if (!(PASSED_PAWN_BITMASK[1][position] & board.pieces[Constants::Piece::WHITE_PAWN]) && (pawnCaptureBitMask[0][position] & board.pieces[Constants::Piece::BLACK_PAWN])) {
+        if (!(PASSED_PAWN_BITMASK[1][position] & ISOLATED_PAWN_BITMASK[position&7] & board.pieces[Constants::Piece::WHITE_PAWN]) && (pawnCaptureBitMask[0][position] & board.pieces[Constants::Piece::BLACK_PAWN])) {
             eval_info.mg_evaluation -= KNIGHT_OUTPOST;
         }
 

@@ -19,7 +19,7 @@ inline constexpr int TEMPO_BONUS = 20;
 
 inline constexpr int PAWN_SHIELD = 5;
 inline constexpr int PAWN_AHEAD_KING_MISSING = -40;
-//inline constexpr int PAWN_PROTECTS_OWN_PIECE = 10;
+inline constexpr int PAWN_BACKWARD = -7;
 inline constexpr int PAWN_DOUBLED = -7; // will be counted twice (each pawn sees another pawn on the same line)
 inline constexpr int PAWN_ISOLATED = -15;
 inline constexpr std::array<int,8> PAWN_PASSED_EG = {0,150,140,120,50,20,0,0};
