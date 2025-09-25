@@ -163,29 +163,29 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
                     [[fallthrough]];
                 case Counter:
                     research_necessary = false;
-                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move);
+                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move,true);
                     break;
                 case Good_Quiets:
                     if (!isCheck && move_number > 5) {
                         // late move reduction
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move);
+                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
                     } else {
-                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move);
+                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
                     }
                     if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
                     if (!isCheck) {
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move);
+                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
                         if (currentValue <= alpha) research_necessary = false;
                     }
                 default:
                     break;
             }
             if (research_necessary) {
-                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move);
+                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move,true);
                 lmr_researches++;
             }
 
@@ -207,7 +207,7 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
     return {currentBestMove,max};
 }
 
-int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth, Move previous_move) {
+int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed) {
 
 
     if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
@@ -217,12 +217,12 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
 
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition
-    if (maxRecursionDepth <= 0) return updateReturnValue(quiscenceSearch(board,maxRecursionDepth,(alpha),(beta),depth));
+    if (remaining_depth <= 0) return updateReturnValue(quiscenceSearch(board,remaining_depth,(alpha),(beta),depth));
     if (alpha > CHECKMATE_VALUE) return updateReturnValue(alpha); // found earlier checkmate
 
 
     Data savedData = getData(board.zobristHash);
-    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= maxRecursionDepth) {
+    if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= remaining_depth) {
         if (savedData.evaluationFlag == EXACT) {
             return updateReturnValue(savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
@@ -246,13 +246,26 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
+    bool isCheck = board.isCheck(board.whiteToMove);
+    if (isCheck) remaining_depth++; // check extension
+
+    // Null move pruning
+    // if the side to move has a piece left that is not a pawn or the king the danger of zugzwang is low
+    bool zugzwang_danger = !(board.whiteToMove ?  (board.white_pieces & ~board.pieces[Constants::WHITE_KING] & ~board.pieces[Constants::WHITE_PAWN])
+                                                : (board.black_pieces & ~board.pieces[Constants::BLACK_KING] & ~board.pieces[Constants::BLACK_PAWN]));
+    if (!isCheck && null_move_allowed && remaining_depth > 3 && !zugzwang_danger) {
+        int depth_reduction = 2 + remaining_depth/6;
+        board.makeNullMove();
+        int null_move_evaluation = -negaMax(board,remaining_depth-depth_reduction,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),depth,0,false);
+        board.unmakeNullMove(enPassant, hash_before);
+        if (null_move_evaluation >= beta) {
+            return updateReturnValue(null_move_evaluation);
+        }
+    }
+
 
     MoveGenPhase phase = TTMove;
     std::vector<Move> bad_moves_for_later = {};
-
-    bool isCheck = board.isCheck(board.whiteToMove);
-    if (isCheck) maxRecursionDepth++; // check extension
-    int num_pieces = __builtin_popcountll(board.white_pieces | board.black_pieces);
 
     Move killer_candidate = killer_moves[depth];
     Move counter_candidate = counter_moves[previous_move.from()][previous_move.to()];
@@ -295,28 +308,28 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                     [[fallthrough]];
                 case Counter:
                     research_necessary = false;
-                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move);
+                    currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                     break;
                 case Good_Quiets:
                     if (!isCheck && move_number > 2) {
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
+                        currentValue = -negaMax(board,remaining_depth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                     } else {
-                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
+                        currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                     }
                     if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
-                    if (!isCheck && (maxRecursionDepth < 3 || depth > 6)) {
+                    if (!isCheck && (remaining_depth < 3 || depth > 6)) {
                         lmr_attempts++;
                         currentValue = -quiscenceSearch(board,0,(-(alpha+1)),(-alpha),depth+1);
                         if (currentValue <= alpha) research_necessary = false;
                     } else if (!isCheck) {
                         lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
+                        currentValue = -negaMax(board,remaining_depth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                         if (currentValue <= alpha) research_necessary = false;
                     } else {
-                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move);
+                        currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                         if (currentValue <= alpha) research_necessary = false;
                     }
                     break;
@@ -324,7 +337,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                     break;
             }
             if (research_necessary) {
-                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move);
+                currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                 lmr_researches++;
             }
 
@@ -346,7 +359,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
                     killer_moves[depth] = move;
                     counter_moves[previous_move.from()][previous_move.to()] = move;
                 }
-                increaseMoveScore(move,maxRecursionDepth);
+                increaseMoveScore(move,remaining_depth);
                 //cutoffs[phase]++;
                 breakWhile = true;
                 break;
@@ -369,7 +382,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
         } else {
             evaluation_flag = EXACT;
         }
-        if (!timeIsUp) tryMakeNewEntry(evaluation_flag,maxRecursionDepth,(max),bestMove,board);
+        if (!timeIsUp) tryMakeNewEntry(evaluation_flag,remaining_depth,(max),bestMove,board);
         return updateReturnValue(max);
     }
     int mate_evaluation = board.isCheck(board.whiteToMove) ?  - CHECKMATE_VALUE : 0;
@@ -379,7 +392,7 @@ int negaMax(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int d
     return updateReturnValue(mate_evaluation);
 }
 
-int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth) {
+int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta, int depth) {
 
     if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
 
@@ -387,7 +400,7 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
     if (depth > highest_depth) highest_depth = depth;
 
     Data savedData = getData(board.zobristHash);
-    if (savedData.evaluationFlag != EMPTY && savedData.depth >= maxRecursionDepth) {
+    if (savedData.evaluationFlag != EMPTY && savedData.depth >= remaining_depth) {
         if (savedData.evaluationFlag == EXACT) {
             return (savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
@@ -400,7 +413,7 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
     }
 
     int current_eval = evaluate(board, alpha, beta);
-    if (maxRecursionDepth <= -8) return current_eval;
+    if (remaining_depth <= -8) return current_eval;
     if (current_eval >= beta) return current_eval;
     if (current_eval > alpha) alpha = current_eval;
 
@@ -420,7 +433,7 @@ int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int bet
         if (!isLegalMove(move,board)) continue;
 
         board.applyPseudoLegalMove(move);
-        int currentValue = -quiscenceSearch(board,maxRecursionDepth-1,(-beta),(-alpha),depth+1);
+        int currentValue = -quiscenceSearch(board,remaining_depth-1,(-beta),(-alpha),depth+1);
         board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
         if (currentValue > alpha) {
             alpha = currentValue;

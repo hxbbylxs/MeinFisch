@@ -264,6 +264,29 @@ void GameBoard::unmakeMove(Move move, int enPassant_, std::array<bool, 5> castle
     zobristHash = hash_before;
 }
 
+void GameBoard::makeNullMove() {
+    if (!whiteToMove) moves++;
+    plies++;
+
+    whiteToMove = !whiteToMove;
+    zobristHash ^= Constants::ZOBRIST_HASH_VALUES_OTHER[0]; // switch player to move
+
+    // reset old en passant
+    if (enPassant != -1) zobristHash ^= Constants::ZOBRIST_HASH_VALUES_ENPASSANT[enPassant%8];
+    enPassant = -1;
+
+    // to detect threefold repetition
+    addNewBoardPosition(zobristHash);
+}
+void GameBoard::unmakeNullMove(int en_passant, uint64_t zobrist_hash) {
+    removeBoardPosition(zobristHash);
+    if (whiteToMove) moves--;
+    plies--;
+    whiteToMove = !whiteToMove;
+    enPassant = en_passant;
+    zobristHash = zobrist_hash;
+}
+
 
 bool GameBoard::noLegalMoves() const {
     vector<Move> pseudoLegalMoves = getPseudoLegalMoves(*this, whiteToMove,ALL);

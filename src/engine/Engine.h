@@ -22,8 +22,8 @@ void playerControlledTimeLimit(int ignore);
 
 std::pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth);
 std::pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth);
-int negaMax(GameBoard  & board, int maxRecursionDepth, int alpha, int beta, int depth, Move previous_move); // searches all moves (expected bad ones lower depth)
-int quiscenceSearch(GameBoard & board, int maxRecursionDepth, int alpha, int beta, int depth); // searches only captures
+int negaMax(GameBoard  & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed); // searches all moves (expected bad ones lower depth)
+int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta, int depth); // searches only captures
 
 std::string reconstructPV(GameBoard & board);
 

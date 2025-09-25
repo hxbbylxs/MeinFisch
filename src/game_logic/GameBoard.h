@@ -37,11 +37,15 @@ struct GameBoard {
     bool isCheck(bool whiteKing) const;
     [[nodiscard]]
     bool noLegalMoves() const;
+
     void applyPseudoLegalMove(Move move);
     void unmakeMove(Move move, int enPassant, std::array<bool, 5> castleRights, uint8_t plies, uint64_t hash_before);
     void updateCastleInformation(Move mv);
     void moveRookForCastle(unsigned castle, bool unmake);
     void handlePawnSpecialCases(Move mv);
+    void makeNullMove();
+    void unmakeNullMove(int en_passant, uint64_t zobrist_hash);
+
     void addNewBoardPosition(uint64_t hash);
     void removeBoardPosition(uint64_t hash);
 

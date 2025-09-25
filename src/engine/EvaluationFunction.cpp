@@ -48,7 +48,7 @@ int evaluate(GameBoard const & board, int alpha, int beta) {
     evaluation = (game_phase_score*eval_info.mg_evaluation + (24-game_phase_score)*eval_info.eg_evaluation)/24;
 
 
-    evaluation += board.whiteToMove ? TEMPO_BONUS : -TEMPO_BONUS;
+    //evaluation += board.whiteToMove ? TEMPO_BONUS : -TEMPO_BONUS;
 
     return board.whiteToMove ? evaluation : -evaluation;
 }
