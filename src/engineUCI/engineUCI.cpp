@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+
 #include "engineUCI.h"
 
 #include "MoveGeneration.h"
@@ -17,7 +18,7 @@
 void engineUCI::receiveCommand(std::string const & message) {
     if (message == "uci") {
         std::cout << "id name MeinFisch" << std::endl;
-        std::cout << "id author SalomonD" << std::endl;
+        std::cout << "id author hxbbylxs" << std::endl;
         std::cout << "uciok" << std::endl;
     } else if (message == "ucinewgame") {
         initializeHistoryHeuristic();
@@ -31,7 +32,6 @@ void engineUCI::receiveCommand(std::string const & message) {
         global_board = convertInputPositionToGameBoard(message);
     } else if (message.rfind("go",0) == 0) {
         std::cout << calcBestMove(message) << std::endl;
-        clearTT();
     } else if (message == "stop") {
 
     }
@@ -48,16 +48,16 @@ GameBoard engineUCI::convertInputPositionToGameBoard(std::string const & input) 
     }
 
     GameBoard board;
-    size_t idx = 1; // Überspringe "position"
+    size_t idx = 1; // skip "position"
 
     if (tokens[idx] == "startpos") {
-        board = GameBoard(); // Standardstellung
+        board = GameBoard(); // standard start position
         idx++;
 
     } else if (tokens[idx] == "fen") {
         if (idx + 6 >= tokens.size()) {
-            std::cerr << "Fehler: unvollständige FEN" << std::endl;
-            return GameBoard();
+            std::cerr << "Error: incomplete FEN" << std::endl;
+            return {};
         }
 
         // Füge die nächsten 6 Tokens zur FEN-Zeichenkette zusammen
@@ -72,11 +72,11 @@ GameBoard engineUCI::convertInputPositionToGameBoard(std::string const & input) 
         board = convertFENtoGameBoard(fen);
         idx += 7;
     } else {
-        std::cerr << "Fehler: unbekannter Positionstyp" << std::endl;
-        return GameBoard();
+        std::cerr << "Error: unknown position type" << std::endl;
+        return {};
     }
 
-    // Prüfe auf "moves"
+    // Check for "moves"
     if (idx < tokens.size() && tokens[idx] == "moves") {
         idx++;
         while (idx < tokens.size()) {
@@ -100,24 +100,23 @@ std::string engineUCI::calcBestMove(std::string const & go) {
 
     // Lese Paare wie "wtime 300000"
     while (iss >> token) {
-        std::string key = token;
         int value = 0;
         if (iss >> value) {
-            uciParams[key] = value;
+            uciParams[token] = value;
         }
     }
 
     // Extrahiere Zeitangaben, falls vorhanden
-    int wtime = uciParams.count("wtime") ? uciParams["wtime"] : 9000000;
-    int btime = uciParams.count("btime") ? uciParams["btime"] : 9000000;
-    int winc  = uciParams.count("winc")  ? uciParams["winc"]  : 0;
-    int binc  = uciParams.count("binc")  ? uciParams["binc"]  : 0;
-    int movestogo = uciParams.count("movestogo") ? uciParams["movestogo"] : -1;
-    int max_depth = uciParams.count("depth") ? uciParams["depth"] : 30;
+    int wtime = uciParams.contains("wtime") ? uciParams["wtime"] : 9000000;
+    int btime = uciParams.contains("btime") ? uciParams["btime"] : 9000000;
+    int winc  = uciParams.contains("winc")  ? uciParams["winc"]  : 0;
+    int binc  = uciParams.contains("binc")  ? uciParams["binc"]  : 0;
+    int movestogo = uciParams.contains("movestogo") ? uciParams["movestogo"] : -1;
+    int max_depth = uciParams.contains("depth") ? uciParams["depth"] : Constants::MAX_RECURSION_DEPTH;
 
 
     int estimated_remaining_moves = std::max(10,60-global_board.moves);
-    int searchTime = std::min(15000.0,global_board.whiteToMove ? (2*wtime/estimated_remaining_moves + 0.8*winc) : (2*btime/estimated_remaining_moves + 0.8*binc));
+    int searchTime = static_cast<int>(std::min(15000.0,global_board.whiteToMove ? (2.0*wtime/estimated_remaining_moves + 0.8*winc) : (2.0*btime/estimated_remaining_moves + 0.8*binc)));
 
     auto res = iterativeDeepening(global_board, searchTime, max_depth);
 
