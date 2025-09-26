@@ -25,6 +25,7 @@ int main() {
     engineUCI engine = engineUCI();
     std::string input;
 
+
     while (input != "quit") {
         std::getline(std::cin, input);
         try {

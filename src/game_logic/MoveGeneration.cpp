@@ -195,6 +195,22 @@ void addPseudoLegalPromotionMoves(vector<Move> & pseudoLegalMoves, Move move, bo
     }
 }
 
+[[nodiscard]] std::vector<Move> getPseudoLegalAdvancedPawnPushes(GameBoard const & board, bool forWhite) {
+    std::vector<Move> pseudoLegalMoves = {};
+    uint64_t ownPieces = forWhite ? board.white_pieces : board.black_pieces;
+    uint64_t enemy_pieces = (board.white_pieces | board.black_pieces) & ~ownPieces;
+    Constants::Piece piece = forWhite ? Constants::WHITE_PAWN : Constants::BLACK_PAWN;
+    uint64_t relevant_pawns = board.pieces[piece] & (forWhite ? (RANK_BITMASKS[6] | RANK_BITMASKS[5]) : (RANK_BITMASKS[1] | RANK_BITMASKS[2]));
+    while (relevant_pawns != 0) {
+        auto from = static_cast<unsigned>(__builtin_ctzll(relevant_pawns));
+
+        addPseudoLegalPawnPushMoves(board,forWhite,pseudoLegalMoves,ownPieces,enemy_pieces,piece,from);
+
+        relevant_pawns &= relevant_pawns-1;
+    }
+    return pseudoLegalMoves;
+}
+
 bool isLegalMove(Move move, GameBoard & board) {
     if (move.castle()) { //case castle
         if (isCastlingThroughCheck(move,board)) return false;

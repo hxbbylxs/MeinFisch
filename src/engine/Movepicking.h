@@ -19,7 +19,11 @@ enum MoveGenPhase {
     Counter,
     Good_Quiets,
     Bad_Moves,
-    Done
+    Done,
+
+    QCaptures,
+    QPawns,
+    QDone
 };
 inline constexpr int NUM_MOVE_GEN_PHASES = 7;
 

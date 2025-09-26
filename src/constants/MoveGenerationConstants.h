@@ -34,6 +34,17 @@ constexpr std::array<std::array<uint64_t,2>,5> castle_rook_positions = []() {
     return castle_rook_positions;
 }();
 
+inline constexpr std::array<uint64_t,8> RANK_BITMASKS = {
+    ((1ULL << 8)-1) << 56,
+    (1ULL << 56)-1 - ((1ULL << 48)-1),
+    (1ULL << 48)-1 - ((1ULL << 40)-1),
+    (1ULL << 40)-1 - ((1ULL << 32)-1),
+    (1ULL << 32)-1 - ((1ULL << 24)-1),
+    (1ULL << 24)-1 - ((1ULL << 16)-1),
+    (1ULL << 16)-1 - ((1ULL << 8)-1),
+    (1ULL << 8)-1
+};
+
 inline constexpr std::array<std::tuple<int,int,int>,4> NON_DIAGONAL_DIRECTIONS = {
     // delta, yLimit, xLimit
     std::make_tuple(-8,0,Constants::IGNORE),                        //North

@@ -423,24 +423,29 @@ int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta,
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
-    auto only_capture_moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
-    mvv_lva_MoveOrdering(only_capture_moves);
+    MoveGenPhase phase = QCaptures;
+    while (phase != QDone) {
+        bool break_while = false;
+        std::vector<Move> moves = pickNextMoves(savedData,0,0,board,phase);
+        for (Move move : moves) {
 
-    for (Move move : only_capture_moves) {
+            int move_gain = abs(STATIC_EG_PIECE_VALUES[move.capture()]) + abs(STATIC_EG_PIECE_VALUES[move.promotion()]);
+            if (current_eval + move_gain + LAZY_EVAL_SAFETY_MARGIN < alpha) continue; // delta pruning
+            if (!isLegalMove(move,board)) continue;
 
-        int captured_piece_value = abs(STATIC_EG_PIECE_VALUES[move.capture()]);
-        if (current_eval + captured_piece_value + LAZY_EVAL_SAFETY_MARGIN < alpha) continue; // delta pruning
-        if (!isLegalMove(move,board)) continue;
-
-        board.applyPseudoLegalMove(move);
-        int currentValue = -quiscenceSearch(board,remaining_depth-1,(-beta),(-alpha),depth+1);
-        board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
-        if (currentValue > alpha) {
-            alpha = currentValue;
-            if (alpha >= beta) {
-                break;
+            board.applyPseudoLegalMove(move);
+            int currentValue = -quiscenceSearch(board,remaining_depth-1,(-beta),(-alpha),depth+1);
+            board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+            if (currentValue > alpha) {
+                alpha = currentValue;
+                if (alpha >= beta) {
+                    break_while = true;
+                    break;
+                }
             }
         }
+        if (break_while) break;
+        phase = static_cast<MoveGenPhase>(phase +1);
     }
     return alpha;
 }

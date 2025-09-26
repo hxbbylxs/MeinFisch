@@ -52,6 +52,13 @@ std::vector<Move> pickNextMoves(Data const &savedData,Move counter_candidate ,Mo
             moves = getPseudoLegalMoves(board,board.whiteToMove,QUIETS);
             staticMoveOrdering(moves, board);
             return moves;
+        case QCaptures:
+            moves = getPseudoLegalMoves(board,board.whiteToMove,CAPTURES);
+            mvv_lva_MoveOrdering(moves);
+            return moves;
+        case QPawns:
+            moves = getPseudoLegalAdvancedPawnPushes(board,board.whiteToMove);
+            return moves;
         default:
             return {};
     }

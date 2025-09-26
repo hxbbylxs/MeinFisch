@@ -18,6 +18,7 @@ enum MoveType {
 
 [[nodiscard]]
 std::vector<Move> getPseudoLegalMoves(GameBoard const & board, bool forWhite, MoveType type);
+[[nodiscard]] std::vector<Move> getPseudoLegalAdvancedPawnPushes(GameBoard const & board, bool forWhite);
 
 
 void addPseudoLegalPawnMoves(GameBoard const & board, bool forWhite, std::vector<Move> & pseudoLegalMoves, uint64_t ownPieces, uint64_t enemyPieces, MoveType type);
