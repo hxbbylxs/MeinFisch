@@ -217,9 +217,11 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
 
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition
-    if (remaining_depth <= 0) return updateReturnValue(quiscenceSearch(board,remaining_depth,(alpha),(beta),depth));
     if (alpha > CHECKMATE_VALUE) return updateReturnValue(alpha); // found earlier checkmate
 
+    bool isCheck = board.isCheck(board.whiteToMove);
+    if (isCheck) remaining_depth++; // check extension
+    if (remaining_depth <= 0) return updateReturnValue(quiscenceSearch(board,remaining_depth,(alpha),(beta),depth));
 
     Data savedData = getData(board.zobristHash);
     if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= remaining_depth) {
@@ -246,8 +248,6 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     int enPassant = board.enPassant;
     uint64_t hash_before = board.zobristHash;
 
-    bool isCheck = board.isCheck(board.whiteToMove);
-    if (isCheck) remaining_depth++; // check extension
 
     // Null move pruning
     // if the side to move has a piece left that is not a pawn or the king the danger of zugzwang is low
@@ -261,6 +261,14 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
         if (null_move_evaluation >= beta) {
             return updateReturnValue(null_move_evaluation);
         }
+    }
+
+    // Razoring
+    // if we are in a leaf node and the static_eval is way worse than alpha, only captures or promotions could help lifting the eval above alpha
+    // therefore we go directly into quiescence search
+    if (remaining_depth == 1 && !isCheck) {
+        int static_eval = evaluate(board,alpha,beta);
+        if (static_eval + 75 < alpha) return updateReturnValue(quiscenceSearch(board,0,alpha,beta,depth+1));
     }
 
 
