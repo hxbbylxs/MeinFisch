@@ -101,7 +101,7 @@ void startTimeLimit(int timeLimit) {
 
 // the first call of the negamax algorithm but instead of just returning an evaluation
 // it returns the best move with the evaluation so the computer knows which move to make
-pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
+pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
 
     total_nodes_searched++;
     //cutoffs = {};
@@ -121,6 +121,7 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
 
     MoveGenPhase phase = TTMove;
     std::vector<Move> bad_moves_for_later = {};
+    NodeType child_node_type = NodeType::PV_NODE;
 
     bool isCheck = board.isCheck(board.whiteToMove);
     int num_pieces = __builtin_popcountll(board.white_pieces | board.black_pieces);
@@ -152,8 +153,13 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
 
             board.applyPseudoLegalMove(move);
             int currentValue;
+            int search_window_alpha = alpha;
+            int search_window_beta = beta;
+            int depth_reduction = 0;
+            if (child_node_type == NodeType::CUT_NODE) {
+                search_window_beta = alpha+1; // Null Window
+            }
 
-            bool research_necessary = true;
             switch (phase) {
                 case TTMove:
                     [[fallthrough]];
@@ -162,33 +168,32 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
                 case Killer:
                     [[fallthrough]];
                 case Counter:
-                    research_necessary = false;
-                    currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move,true);
                     break;
                 case Good_Quiets:
                     if (!isCheck && move_number > 5) {
                         // late move reduction
-                        lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
-                    } else {
-                        currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
+                        depth_reduction = 1;
                     }
-                    if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
                     if (!isCheck) {
-                        lmr_attempts++;
-                        currentValue = -negaMax(board,maxRecursionDepth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),1,move,true);
-                        if (currentValue <= alpha) research_necessary = false;
+                        depth_reduction = 1;
                     }
                 default:
                     break;
             }
-            if (research_necessary) {
-                currentValue = -negaMax(board,maxRecursionDepth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),1,move,true);
-                lmr_researches++;
+            currentValue = -negaMax(board,
+                                        remaining_depth-1-depth_reduction,
+                                        updateAlphaBetaValue(-search_window_beta),updateAlphaBetaValue(-search_window_alpha),
+                                        1,move,true,child_node_type);
+            if (child_node_type == NodeType::CUT_NODE && currentValue > alpha) {
+                currentValue = -negaMax(board,
+                                            remaining_depth-1,
+                                                updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),
+                                                1,move,true,NodeType::PV_NODE);
             }
 
+            child_node_type = NodeType::CUT_NODE; // every node after the first one is an expected cut node
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
             if (currentValue > max) {
@@ -203,11 +208,11 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int maxRecursionDepth) {
         phase = static_cast<MoveGenPhase>(phase +1);
     }
 
-    if (!timeIsUp) tryMakeNewEntry(EXACT,maxRecursionDepth,max,currentBestMove,board);
+    if (!timeIsUp) tryMakeNewEntry(EXACT,remaining_depth,max,currentBestMove,board);
     return {currentBestMove,max};
 }
 
-int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed) {
+int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed, NodeType node_type) {
 
 
     if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
@@ -256,7 +261,10 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     if (!isCheck && null_move_allowed && remaining_depth > 3 && !zugzwang_danger) {
         int depth_reduction = 2 + remaining_depth/6;
         board.makeNullMove();
-        int null_move_evaluation = -negaMax(board,remaining_depth-depth_reduction,updateAlphaBetaValue(-beta),updateAlphaBetaValue(-alpha),depth,0,false);
+        int null_move_evaluation = -negaMax(board,
+                                                remaining_depth-depth_reduction,
+                                                updateAlphaBetaValue(-beta),updateAlphaBetaValue(-(beta-1)),
+                                                depth,0,false,NodeType::CUT_NODE);
         board.unmakeNullMove(enPassant, hash_before);
         if (null_move_evaluation >= beta) {
             return updateReturnValue(null_move_evaluation);
@@ -274,6 +282,19 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
 
     MoveGenPhase phase = TTMove;
     std::vector<Move> bad_moves_for_later = {};
+
+    NodeType child_node_type;
+    switch (node_type) {
+        case NodeType::CUT_NODE:
+            child_node_type = NodeType::ALL_NODE;
+            break;
+        case NodeType::ALL_NODE:
+            child_node_type = NodeType::CUT_NODE;
+            break;
+        case NodeType::PV_NODE:
+            child_node_type = NodeType::PV_NODE;
+            break;
+    }
 
     Move killer_candidate = killer_moves[depth];
     Move counter_candidate = counter_moves[previous_move.from()][previous_move.to()];
@@ -306,7 +327,13 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
             board.applyPseudoLegalMove(move);
             int currentValue = -CHECKMATE_VALUE;
 
-            bool research_necessary = true;
+            int search_window_alpha = alpha;
+            int search_window_beta = beta;
+            int reduction = 0;
+            if (child_node_type != NodeType::PV_NODE) {
+                search_window_beta = alpha +1;
+            }
+
             switch (phase) {
                 case TTMove:
                     [[fallthrough]];
@@ -315,40 +342,37 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
                 case Killer:
                     [[fallthrough]];
                 case Counter:
-                    research_necessary = false;
-                    currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move,true);
                     break;
                 case Good_Quiets:
                     if (!isCheck && move_number > 2) {
-                        lmr_attempts++;
-                        currentValue = -negaMax(board,remaining_depth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
-                    } else {
-                        currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
+                        reduction = 1;
                     }
-                    if (currentValue <= alpha) research_necessary = false;
                     break;
                 case Bad_Moves:
                     if (!isCheck && (remaining_depth < 3 || depth > 6)) {
-                        lmr_attempts++;
-                        currentValue = -quiscenceSearch(board,0,(-(alpha+1)),(-alpha),depth+1);
-                        if (currentValue <= alpha) research_necessary = false;
+                        reduction = remaining_depth-1; // directly into quiescence
                     } else if (!isCheck) {
-                        lmr_attempts++;
-                        currentValue = -negaMax(board,remaining_depth-2,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
-                        if (currentValue <= alpha) research_necessary = false;
-                    } else {
-                        currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(alpha+1)),updateAlphaBetaValue(-alpha),depth+1,move,true);
-                        if (currentValue <= alpha) research_necessary = false;
+                        reduction = 1;
                     }
                     break;
                 default:
                     break;
             }
-            if (research_necessary) {
-                currentValue = -negaMax(board,remaining_depth-1,updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),depth+1,move,true);
-                lmr_researches++;
+            currentValue = -negaMax(board,
+                                            remaining_depth-1-reduction,
+                                            updateAlphaBetaValue(-(search_window_beta)),updateAlphaBetaValue(-search_window_alpha),
+                                            depth+1,move,true,child_node_type);
+            // research if
+            // - child was searched with null_window or depth was reduced
+            // - and fails high
+            if (currentValue > alpha && (child_node_type == NodeType::CUT_NODE || reduction >= 1)) {
+                currentValue = -negaMax(board,
+                                            remaining_depth-1,
+                                            updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),
+                                            depth+1,move,true,NodeType::PV_NODE);
             }
 
+            child_node_type = NodeType::CUT_NODE; // every further child node is a cut node
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
             if (!timeIsUp) {
