@@ -104,18 +104,6 @@ void testLegalMoveCheck() {
 
 }
 
-//r1b1r1k1/1p1nb3/2pp2PQ/q1nPp3/p1P1P3/2N2P2/PP6/1K1R1BNR b - - 0 18
-void testBlackBoxEngine() {
-
-    GameBoard board = convertFENtoGameBoard("r1b1r1k1/1p1nb3/2pp2PQ/q1nPp3/p1P1P3/2N2P2/PP6/1K1R1BNR b - - 0 18");
-    int expected = 99980;
-    auto actual = iterativeDeepening(board,5,30);
-    if (actual.second != expected) {
-        std::cout << "Test failed: checkmate detection" << std::endl;
-        return;
-    }
-    std::cout << "Test passed: checkmate detection" << std::endl;
-}
 
 
 //4k2r/Ppq5/8/R2bpP2/n5P1/3r1B1N/1pP1Q3/R3K3 w Qk e6 0 1 before move

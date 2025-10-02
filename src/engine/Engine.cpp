@@ -43,11 +43,15 @@ std::array<int,NUM_MOVE_GEN_PHASES> cutoffs = {};
 
 
 
-std::atomic<bool> timeIsUp(false);
-pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
-    timeIsUp = false;
-    std::thread timeGuard( startTimeLimit,timeLimit);
+
+inline std::chrono::time_point<std::chrono::system_clock> deadline; // ATTENTION - engine uses currently only one search thread (no race conditions)
+
+void iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
+    stop_search = false;
+    search_ongoing = true;
+
     auto start = std::chrono::high_resolution_clock::now();
+    deadline = start + std::chrono::milliseconds(timeLimit);
     auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/3));
 
     total_nodes_searched = 0;
@@ -56,7 +60,7 @@ pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_dept
     pair<Move,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
                                                         // if not timeIsUp in the next iteration we know that the last value is usable
     for (int depth = 0; depth <= max_depth; depth++) {
-        if (timeIsUp) break;
+        if (stop_search) break;
 
         //debug
         lmr_attempts = 0;
@@ -69,7 +73,7 @@ pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_dept
         currentBestMove = incompleteMoveCalculation;
         highest_depth = 0;
         incompleteMoveCalculation = getOptimalMoveNegaMax(board,depth);
-        if (!timeIsUp) {
+        if (!stop_search) {
             std::string pv = reconstructPV(board);
             printAnalysisData(incompleteMoveCalculation,depth, highest_depth ,start,total_nodes_searched,pv);
         }
@@ -77,26 +81,18 @@ pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_dept
         decreaseAllMoveScores();
 
         // Not worth starting a new depth or last depth reached
-        if (!timeIsUp && (depth == max_depth || std::chrono::high_resolution_clock::now() >= dontStartNewDepthTime)) {
+        if (!stop_search && (depth == max_depth || std::chrono::high_resolution_clock::now() >= dontStartNewDepthTime)) {
             currentBestMove = incompleteMoveCalculation;
-            timeIsUp = true;
+            stop_search = true;
             break;
         }
 
     }
     if (currentBestMove.first.value == 0) currentBestMove = incompleteMoveCalculation; // in case timeIsUp after depth 0, currentBestMove is invalid
-
-    timeGuard.join();
-    return currentBestMove;
+    std::cout << "bestmove " << longAlgebraicNotation(currentBestMove.first) << std::endl;
+    search_ongoing = false;
 }
 
-void startTimeLimit(int timeLimit) {
-    auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
-    while (deadline > std::chrono::high_resolution_clock::now() && !timeIsUp) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    timeIsUp = true;
-}
 
 
 // the first call of the negamax algorithm but instead of just returning an evaluation
@@ -208,15 +204,14 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
         phase = static_cast<MoveGenPhase>(phase +1);
     }
 
-    if (!timeIsUp) tryMakeNewEntry(EXACT,remaining_depth,max,currentBestMove,board);
+    if (!stop_search) tryMakeNewEntry(EXACT,remaining_depth,max,currentBestMove,board);
     return {currentBestMove,max};
 }
 
 int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed, NodeType node_type) {
 
-
-    if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
-
+    if (std::chrono::high_resolution_clock::now() > deadline) stop_search = true;
+    if (stop_search) return Constants::TIME_IS_UP_FLAG;
 
     total_nodes_searched++;
 
@@ -375,7 +370,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
             child_node_type = NodeType::CUT_NODE; // every further child node is a cut node
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
 
-            if (!timeIsUp) {
+            if (!stop_search) {
                 assert(currentValue < CHECKMATE_VALUE+100 && currentValue > -CHECKMATE_VALUE-100);
             }
 
@@ -414,7 +409,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
         } else {
             evaluation_flag = EXACT;
         }
-        if (!timeIsUp) tryMakeNewEntry(evaluation_flag,remaining_depth,(max),bestMove,board);
+        if (!stop_search) tryMakeNewEntry(evaluation_flag,remaining_depth,(max),bestMove,board);
         return updateReturnValue(max);
     }
     int mate_evaluation = board.isCheck(board.whiteToMove) ?  - CHECKMATE_VALUE : 0;
@@ -426,7 +421,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
 
 int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta, int depth) {
 
-    if (timeIsUp) return Constants::TIME_IS_UP_FLAG;
+    if (stop_search) return Constants::TIME_IS_UP_FLAG;
 
     total_nodes_searched++;
     if (depth > highest_depth) highest_depth = depth;

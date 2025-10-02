@@ -10,7 +10,7 @@
 
 class engineUCI {
     static GameBoard convertInputPositionToGameBoard(std::string const & input);
-    static std::string calcBestMove(std::string const & go);
+    static void calcBestMove(std::string const & go);
     static void makeMove(std::string const & move, GameBoard & gameBoard);
     public:
     static void receiveCommand(std::string const & message);

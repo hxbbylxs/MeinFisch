@@ -7,6 +7,7 @@
 
 #include <array>
 #include <utility>
+#include <atomic>
 
 #include "GameBoard.h"
 #include "Move.h"
@@ -16,6 +17,8 @@ enum class NodeType {
     CUT_NODE,
     ALL_NODE
 };
+inline std::atomic<bool> stop_search(false);
+inline std::atomic<bool> search_ongoing(false);
 
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> global_evaluated_positions_counter = {}; // TODO remove
 inline std::array<int,Constants::MAX_RECURSION_DEPTH> evaluated_positions_in_quiscence = {}; // TODO remove
@@ -24,7 +27,7 @@ inline std::array<int,Constants::MAX_RECURSION_DEPTH> evaluated_positions_in_qui
 void startTimeLimit(int timeLimit);
 void playerControlledTimeLimit(int ignore);
 
-std::pair<Move,int> iterativeDeepening(GameBoard & board, int timeLimit, int max_depth);
+void iterativeDeepening(GameBoard & board, int timeLimit, int max_depth);
 std::pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth);
 int negaMax(GameBoard  & board, int remaining_depth, int alpha, int beta, int depth, Move previous_move, bool null_move_allowed, NodeType node_type); // searches all moves (expected bad ones lower depth)
 int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta, int depth); // searches only captures
