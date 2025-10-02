@@ -10,7 +10,7 @@
 using Constants::BOARD_SIZE;
 using Constants::NUM_SQUARES;
 
-
+// these functions are for initialization of constants
 
 
 std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS> generateSliderBlockerCombos(int index, bool diagonalSlider) {

@@ -139,9 +139,9 @@ namespace Constants {
 
 
 inline void initializeZobristHashValues() {
-    static std::random_device rd;  // Seed
-    static std::mt19937_64 gen(rd());  // 64-bit Mersenne Twister Generator
+    static std::mt19937_64 gen(20250202ULL);  // fester Seed
     static std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+
     for (int i = 0; i < 64; i++) {
         for (int j = 1; j < 13; j++) {
             Constants::ZOBRIST_HASH_VALUES_PIECES[i][j] = dis(gen);

@@ -237,6 +237,7 @@ inline std::array<std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS>,Constants::N
         return kingAttackBitMasks[from];
     };
 
+// these functions are for initialization of constans
 
 void initializeSliderAttackBitMask();
 void setSliderAttackBitMasks(bool diagonalSlider, int board_pos);
