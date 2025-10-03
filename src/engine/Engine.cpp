@@ -344,9 +344,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
                     }
                     break;
                 case Bad_Moves:
-                    if (!isCheck && (remaining_depth < 3 || depth > 6)) {
-                        reduction = remaining_depth-1; // directly into quiescence
-                    } else if (!isCheck) {
+                    if (!isCheck){
                         reduction = 1;
                     }
                     break;

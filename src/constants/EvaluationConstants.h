@@ -15,8 +15,6 @@ inline constexpr int LAZY_EVAL_SAFETY_MARGIN = 200;
 inline constexpr int FUTILITY_BASE_SAFETY_MARGIN = 280;
 inline constexpr int FUTILITY_DEPTH_SAFETY_MARGIN = 100;
 
-inline constexpr int TEMPO_BONUS = 20;
-
 inline constexpr int PAWN_SHIELD = 5;
 inline constexpr int PAWN_AHEAD_KING_MISSING = -40;
 inline constexpr int PAWN_BACKWARD = -7;
@@ -27,13 +25,13 @@ inline constexpr std::array<int,8> PAWN_PASSED_MG = {0,70,60,50,40,40,20,0};
 inline constexpr int PAWN_IN_SMALL_KING_ZONE = 5;
 inline constexpr int PAWN_IN_LARGE_KING_ZONE = 2;
 
-inline constexpr int KNIGHT_BONUS_PER_SQUARE = 3;
+inline constexpr int KNIGHT_BONUS_PER_SQUARE = 4;
 inline constexpr int KNIGHT_OUTPOST = 15;
 inline constexpr int KNIGHT_IN_SMALL_KING_ZONE = 10;
 inline constexpr int KNIGHT_IN_LARGE_KING_ZONE = 5;
 
-inline constexpr int BISHOP_BONUS_PER_SQUARE = 1;
-inline constexpr int BISHOP_BONUS_PER_CENTER_SQUARE = 2;
+inline constexpr int BISHOP_BONUS_PER_SQUARE = 2;
+inline constexpr int BISHOP_BONUS_PER_CENTER_SQUARE = 3;
 inline constexpr int BISHOP_XRAY = 15;
 inline constexpr int BISHOP_PAIR = 50;
 inline constexpr int BISHOP_IN_SMALL_KING_ZONE = 10;
