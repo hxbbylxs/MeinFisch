@@ -270,7 +270,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     // if we are in a leaf node and the static_eval is way worse than alpha, only captures or promotions could help lifting the eval above alpha
     // therefore we go directly into quiescence search
     if (remaining_depth == 1 && !isCheck) {
-        int static_eval = evaluate(board,alpha,beta);
+        int static_eval = evaluate(board);
         if (static_eval + 75 < alpha) return updateReturnValue(quiscenceSearch(board,0,alpha,beta,depth+1));
     }
 
@@ -437,7 +437,7 @@ int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta,
         }
     }
 
-    int current_eval = evaluate(board, alpha, beta);
+    int current_eval = evaluate(board);
     if (remaining_depth <= -8) return current_eval;
     if (current_eval >= beta) return current_eval;
     if (current_eval > alpha) alpha = current_eval;

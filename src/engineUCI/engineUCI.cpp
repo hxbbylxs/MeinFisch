@@ -10,6 +10,8 @@
 
 #include "engineUCI.h"
 
+#include <EvaluationFunction.h>
+
 #include "MoveGeneration.h"
 #include "Memory.h"
 #include "Output.h"

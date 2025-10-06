@@ -266,5 +266,41 @@ inline constexpr std::array<int,Constants::NUM_SQUARES> eg_black_king_table = {
     -74, -35, -18, -18, -11, 15, 4, -17,
 };
 
+inline constexpr std::array<std::array<int,Constants::NUM_SQUARES>,13> MG_PST = {
+    {
+        {}, // Constans::Piece::NONE
+           mg_white_pawn_table,
+           mg_black_pawn_table,
+           mg_white_knight_table,
+           mg_black_knight_table,
+           mg_white_bishop_table,
+           mg_black_bishop_table,
+           mg_white_rook_table,
+           mg_black_rook_table,
+           mg_white_queen_table,
+           mg_black_queen_table,
+           mg_white_king_table,
+           mg_black_king_table
+    }
+};
+inline constexpr std::array<std::array<int,Constants::NUM_SQUARES>,13> EG_PST = {
+    {
+        {}, // Constans::Piece::NONE
+           eg_white_pawn_table,
+           eg_black_pawn_table,
+           eg_white_knight_table,
+           eg_black_knight_table,
+           eg_white_bishop_table,
+           eg_black_bishop_table,
+           eg_white_rook_table,
+           eg_black_rook_table,
+           eg_white_queen_table,
+           eg_black_queen_table,
+           eg_white_king_table,
+           eg_black_king_table
+    }
+};
+
+
 
 #endif //PIECESQUARETABLES_H

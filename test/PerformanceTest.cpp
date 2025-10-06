@@ -140,7 +140,7 @@ void testEval() {
     GameBoard board = convertFENtoGameBoard(testFENs[1]);
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 1000000; i++) {
-        int a = evaluate(board,-CHECKMATE_VALUE,CHECKMATE_VALUE);
+        int a = evaluate(board);
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
