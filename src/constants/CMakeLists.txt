@@ -8,3 +8,4 @@ add_library(
 )
 
 target_include_directories(constants PUBLIC .)
+target_link_libraries(constants utils)

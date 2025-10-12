@@ -7,6 +7,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "Utils.h"
+
 using Constants::BOARD_SIZE;
 using Constants::NUM_SQUARES;
 
@@ -16,7 +18,7 @@ using Constants::NUM_SQUARES;
 std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS> generateSliderBlockerCombos(int index, bool diagonalSlider) {
 
     uint64_t const blockerBitMask = diagonalSlider ? diagonalSliderBlockerBitMasks[index] : nonDiagonalSliderBlockerBitMasks[index];
-    uint64_t const numberOfCombinations =  1ULL << __builtin_popcountll(blockerBitMask);
+    uint64_t const numberOfCombinations =  1ULL << popcountll(blockerBitMask);
     std::vector<int> const positionIndices = bitmaskToIndices(blockerBitMask);
     std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS> blockerCombinations = {};
 
@@ -40,7 +42,7 @@ uint64_t nextCombination(uint64_t blockerBitMask, std::vector<int> const & posit
 std::vector<int> bitmaskToIndices(uint64_t bitmask) {
     std::vector<int> indices;
     while (bitmask != 0) {
-        indices.push_back(__builtin_ctzll(bitmask));
+        indices.push_back(counttzll(bitmask));
         bitmask &= bitmask-1;
     }
     return indices;
@@ -68,7 +70,7 @@ std::array<uint64_t,NUM_SQUARES> findMagicNumbers(bool diagonalSlider) {
     std::array<uint64_t,NUM_SQUARES> magicNumbers = {};
     for (int board_pos = 0; board_pos < NUM_SQUARES; board_pos++) {
         std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS> blockerCombinations = generateSliderBlockerCombos(board_pos,diagonalSlider);
-        int shift = NUM_SQUARES - __builtin_popcountll(diagonalSlider ? diagonalSliderBlockerBitMasks[board_pos]:nonDiagonalSliderBlockerBitMasks[board_pos]);
+        int shift = NUM_SQUARES - popcountll(diagonalSlider ? diagonalSliderBlockerBitMasks[board_pos]:nonDiagonalSliderBlockerBitMasks[board_pos]);
         while (true) {
             uint64_t magicNumberCandidate = generateRandomMagicNumberCandidate(shift);
             if (checkMagicNumberCandidate(shift,blockerCombinations,board_pos,diagonalSlider,magicNumberCandidate)) {
@@ -125,7 +127,7 @@ void setSliderAttackBitMasks(bool diagonalSlider, int board_pos) {
     }
     auto & attackBitMasks = diagonalSlider ? diagonalSlidersAttackBitMask : nonDiagonalSlidersAttackBitMask;
 
-    int shift = NUM_SQUARES - __builtin_popcountll(blockerBitMasks[board_pos]);
+    int shift = NUM_SQUARES - popcountll(blockerBitMasks[board_pos]);
     std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS> allPossibleBlockerCombinations = generateSliderBlockerCombos(board_pos,diagonalSlider);
     for (uint64_t blockerCombination : allPossibleBlockerCombinations) {
         uint64_t j = blockerCombination * magicNumbers[board_pos] >> shift;

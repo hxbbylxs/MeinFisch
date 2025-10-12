@@ -61,13 +61,7 @@ namespace Constants {
     inline constexpr int BOARD_SIZE = 8;
     inline constexpr int NUM_SQUARES = 64;
 
-    inline constexpr uint32_t MENU_EXIT_FLAG = 1U << 31;
-
-    inline constexpr int MOVE_INVALID_FLAG = 1 << 31;
-
     inline constexpr int MAX_RECURSION_DEPTH = 30;
-
-    inline constexpr uint32_t CRITICAL_MOVE_BITMASK = ((1 << 14)-1 -((1<<10)-1)) | 1 << 28;
 
     enum MoveDecoding {
         PIECE = 0,
@@ -81,34 +75,17 @@ namespace Constants {
 
     inline constexpr std::array<uint32_t,7> move_decoding_bitmasks = []() {
         std::array<uint32_t,7> result = {};
-        result[PIECE] = (1 << 4)-1;                 //piece
-        result[FROM] = (1 << 10)-1 -((1<<4)-1);    //from
-        result[CAPTURE] = (1 << 14)-1 -((1<<10)-1);   //capture
-        result[TO] = (1 << 20)-1 -((1<<14)-1);   //to
+        result[PIECE] = (1 << 4)-1;                     //piece
+        result[FROM] = (1 << 10)-1 -((1<<4)-1);         //from
+        result[CAPTURE] = (1 << 14)-1 -((1<<10)-1);     //capture
+        result[TO] = (1 << 20)-1 -((1<<14)-1);          //to
         result[PROMOTION] = (1 << 24)-1 -((1<<20)-1);   //promotion
-        result[CASTLE] = (1 << 28)-1 -((1<<24)-1);   //castle
-        result[CHECK] = 1 << 28;                    //check
+        result[CASTLE] = (1 << 28)-1 -((1<<24)-1);      //castle
+        result[CHECK] = 1 << 28;                        //check
 
         return result;
     }();
 
-    constexpr std::array<Piece,13> piece_decoding = {
-        NONE,
-        WHITE_PAWN,
-        BLACK_PAWN,
-        WHITE_KNIGHT,
-        BLACK_KNIGHT,
-        WHITE_BISHOP,
-        BLACK_BISHOP,
-        WHITE_ROOK,
-        BLACK_ROOK,
-        WHITE_QUEEN,
-        BLACK_QUEEN,
-        WHITE_KING,
-        BLACK_KING
-    };
-
-    constexpr std::array<const std::string,13> PIECE_SYMBOLS = {" ","♙","♟","♘","♞","♗","♝","♖","♜","♕","♛","♔","♚"};
     constexpr std::array<const char,13> PIECE_LETTERS = {' ','P','p','N','n','B','b','R','r','Q','q','K','k'};
     constexpr std::array<const std::string,13> PROMOTION_STRING = {" ","p","p","n","n","b","b","r","r","q","q","k","k"};
 

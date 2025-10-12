@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include "Move.h"
 
+#include "Utils.h"
+
 struct GameBoard {
     std::array<uint64_t, 13> pieces;
     uint64_t white_pieces;
@@ -60,7 +62,7 @@ template<typename F>
 void forEachPiece(Constants::Piece piece, GameBoard const & board, F operation) {
     uint64_t bitboard = board.pieces[piece];
     while (bitboard != 0) {
-        auto position = static_cast<unsigned>(__builtin_ctzll(bitboard)); // extracts last bit
+        auto position = static_cast<unsigned>(counttzll(bitboard));
         operation(position, board);
         bitboard = bitboard & (bitboard - 1); // removes last bit
     }

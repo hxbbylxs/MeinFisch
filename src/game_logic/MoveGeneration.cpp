@@ -3,10 +3,14 @@
 //
 #include <cstdint>
 #include <vector>
+
+#include "Utils.h"
 using std::vector;
 
 #include "MoveGeneration.h"
 #include "MoveGenerationConstants.h"
+
+#include "Utils.h"
 
 
 
@@ -45,21 +49,21 @@ void addPseudoLegalGenericPieceTypeMoves( GameBoard const &board,
     uint64_t pieceOccupancy = ownPieces | enemyPieces;
     uint64_t piecePositions = board.pieces[piece];
     while (piecePositions != 0) {
-        auto from = static_cast<unsigned>(__builtin_ctzll(piecePositions)); // position of current first piece
+        auto from = static_cast<unsigned>(counttzll(piecePositions)); // position of current first piece
         uint64_t possibleMoves = getAttackBitMask(from, pieceOccupancy);
         uint64_t captures = possibleMoves & enemyPieces;
         uint64_t quiets = possibleMoves & ~pieceOccupancy;
 
         if (type == CAPTURES || type == ALL) {
             while (captures != 0) {
-                auto to = static_cast<unsigned>(__builtin_ctzll(captures)); // position of current first attack
+                auto to = static_cast<unsigned>(counttzll(captures)); // position of current first attack
                 pseudoLegalMoves.emplace_back(piece,from,getPieceAt(board, to, !forWhite),to);
                 captures &= captures-1; // remove this attack
             }
         }
         if (type == QUIETS || type == ALL) {
             while (quiets != 0) {
-                auto to = static_cast<unsigned>(__builtin_ctzll(quiets)); // position of current first attack
+                auto to = static_cast<unsigned>(counttzll(quiets)); // position of current first attack
                 pseudoLegalMoves.emplace_back(piece,from,Constants::Piece::NONE,to);
                 quiets &= quiets-1; // remove this attack
             }
@@ -105,7 +109,7 @@ void addPseudoLegalPawnCaptureMoves(    GameBoard const &board,
     }
     possibleCaptureMoves &= enemyPieces;
     while (possibleCaptureMoves != 0) {
-        auto to = static_cast<unsigned>(__builtin_ctzll(possibleCaptureMoves)); // position of current attack
+        auto to = static_cast<unsigned>(counttzll(possibleCaptureMoves)); // position of current attack
 
         Move move = {piece,from,getPieceAt(board,to,!forWhite),to};
 
@@ -130,7 +134,7 @@ void addPseudoLegalPawnPushMoves(   GameBoard const &board,
 uint64_t singlePush = (1ULL << (from + (forWhite ? Constants::Direction::NORTH : Constants::Direction::SOUTH))) & ~(ownPieces | enemyPieces);
     uint64_t doublePush = pawnDoublePushBitMask[forWhite?0:1][from] & ~(ownPieces | enemyPieces);
     if (singlePush != 0) {
-        auto to = static_cast<unsigned>(__builtin_ctzll(singlePush));
+        auto to = static_cast<unsigned>(counttzll(singlePush));
         Move move =     {piece,from, Constants::NONE, to};
 
         if (to <= MAX_VALID_PAWN_POSITION && to >= MIN_VALID_PAWN_POSITION) {
@@ -139,7 +143,7 @@ uint64_t singlePush = (1ULL << (from + (forWhite ? Constants::Direction::NORTH :
             addPseudoLegalPromotionMoves(pseudoLegalMoves, move, forWhite);
         }
         if (doublePush != 0) {
-            pseudoLegalMoves.emplace_back(piece, from,Constants::NONE,__builtin_ctzll(doublePush));
+            pseudoLegalMoves.emplace_back(piece, from,Constants::NONE,counttzll(doublePush));
         }
     }
 }
@@ -166,7 +170,7 @@ Constants::Piece getPieceAt(GameBoard const &board, unsigned position, bool piec
     uint64_t mask = 1ULL << position;
     for (unsigned i = start; i < 13; i+= 2) {
         if (board.pieces[i] & mask) {
-            return Constants::piece_decoding[i];
+            return static_cast<Constants::Piece>(i);
         }
     }
     return Constants::Piece::NONE;
@@ -202,7 +206,7 @@ void addPseudoLegalPromotionMoves(vector<Move> & pseudoLegalMoves, Move move, bo
     Constants::Piece piece = forWhite ? Constants::WHITE_PAWN : Constants::BLACK_PAWN;
     uint64_t relevant_pawns = board.pieces[piece] & (forWhite ? (RANK_BITMASKS[6] | RANK_BITMASKS[5]) : (RANK_BITMASKS[1] | RANK_BITMASKS[2]));
     while (relevant_pawns != 0) {
-        auto from = static_cast<unsigned>(__builtin_ctzll(relevant_pawns));
+        auto from = static_cast<unsigned>(counttzll(relevant_pawns));
 
         addPseudoLegalPawnPushMoves(board,forWhite,pseudoLegalMoves,ownPieces,enemy_pieces,piece,from);
 

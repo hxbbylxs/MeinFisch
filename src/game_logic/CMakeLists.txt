@@ -7,4 +7,4 @@ add_library (
 )
 
 target_include_directories(game_logic PUBLIC .)
-target_link_libraries(game_logic constants)
+target_link_libraries(game_logic utils constants)

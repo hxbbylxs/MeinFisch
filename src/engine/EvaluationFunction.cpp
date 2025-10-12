@@ -6,6 +6,7 @@
 #include "PieceSquareTables.h"
 
 #include "GameBoard.h" //lib game_logic
+#include "Utils.h"
 
 // returns a heuristic value of how good the position is
 // large and positive ~ good for the side to move
@@ -17,11 +18,10 @@ int evaluate(GameBoard const & board) {
     int mg_evaluation = 0;
     int eg_evaluation = 0;
 
-    for (Constants::Piece piece_type : Constants::piece_decoding) {
-        if (piece_type == Constants::NONE) continue;
+    for (unsigned piece_type = 1; piece_type < 13; ++piece_type) {
         bool piece_is_white = (piece_type % 2 == 1);
         int sign = piece_is_white ? 1 : -1;
-        forEachPiece(piece_type,board,[&](unsigned position, GameBoard const & game_board) {
+        forEachPiece(static_cast<Constants::Piece>(piece_type),board,[&](unsigned position, GameBoard const & game_board) {
 
             // PST
             mg_evaluation += sign * MG_PST[piece_type][position];
@@ -45,9 +45,9 @@ int evaluate(GameBoard const & board) {
 //measurement for game phase (middle game: 24, late end game: 0)
 int getGamePhaseScore(GameBoard const &board) {
     int score = 0;
-    score += 4*__builtin_popcountll(board.pieces[Constants::WHITE_QUEEN] | board.pieces[Constants::BLACK_QUEEN]);
-    score += 2*__builtin_popcountll(board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::BLACK_ROOK]);
-    score += __builtin_popcountll(board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::BLACK_KNIGHT]);
-    score += __builtin_popcountll(board.pieces[Constants::WHITE_BISHOP] | board.pieces[Constants::BLACK_BISHOP]);
+    score += 4*popcountll(board.pieces[Constants::WHITE_QUEEN] | board.pieces[Constants::BLACK_QUEEN]);
+    score += 2*popcountll(board.pieces[Constants::WHITE_ROOK] | board.pieces[Constants::BLACK_ROOK]);
+    score += popcountll(board.pieces[Constants::WHITE_KNIGHT] | board.pieces[Constants::BLACK_KNIGHT]);
+    score += popcountll(board.pieces[Constants::WHITE_BISHOP] | board.pieces[Constants::BLACK_BISHOP]);
     return score;
 }

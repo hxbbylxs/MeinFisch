@@ -40,9 +40,6 @@ void engineUCI::receiveCommand(std::string const & message) {
     } else if (message == "stop"){
         stop_search = true;
     }
-
-
-
 }
 
 GameBoard engineUCI::convertInputPositionToGameBoard(std::string const & input) {
@@ -135,31 +132,11 @@ void engineUCI::calcBestMove(std::string const & go) {
 }
 
 void engineUCI::makeMove(std::string const & move, GameBoard & gameBoard) {
-    unsigned from = std::tolower(move[0])-'a' + 56-8*(move[1]-'1');
-    unsigned to = std::tolower(move[2])-'a' + 56-8*(move[3]-'1');
-    Constants::Piece pawn_promotion = Constants::Piece::NONE;
-    if (move.length() == 5) {
-        if (move[4] == 'q') {
-            pawn_promotion = gameBoard.whiteToMove ? Constants::Piece::WHITE_QUEEN : Constants::Piece::BLACK_QUEEN;
-        } else if (move[4] == 'r') {
-            pawn_promotion = gameBoard.whiteToMove ? Constants::Piece::WHITE_ROOK : Constants::Piece::BLACK_ROOK;
-        } else if (move[4] == 'b') {
-            pawn_promotion = gameBoard.whiteToMove ? Constants::Piece::WHITE_BISHOP : Constants::Piece::BLACK_BISHOP;
-        } else if (move[4] == 'n') {
-            pawn_promotion = gameBoard.whiteToMove ? Constants::Piece::WHITE_KNIGHT : Constants::Piece::BLACK_KNIGHT;
-        }
-    }
-    Constants::Piece piece = getPieceAt(gameBoard,from,gameBoard.whiteToMove);
-    Constants::Piece capture = getPieceAt(gameBoard,to,!gameBoard.whiteToMove);
-    if (piece == Constants::Piece::WHITE_PAWN && to == gameBoard.enPassant) capture = Constants::Piece::BLACK_PAWN;
-    else if (piece == Constants::BLACK_PAWN && to == gameBoard.enPassant) capture = Constants::Piece::WHITE_PAWN;
-    Constants::Castle castle = Constants::Castle::NO_CASTLE;
-    if (piece == Constants::WHITE_KING && to == 62 && from == 60) castle = Constants::Castle::WHITE_KING_SIDE_CASTLE;
-    else if (piece == Constants::WHITE_KING && to == 58 && from == 60) castle = Constants::Castle::WHITE_QUEEN_SIDE_CASTLE;
-    else if (piece == Constants::BLACK_KING && to == 6 && from == 4) castle = Constants::Castle::BLACK_KING_SIDE_CASTLE;
-    else if (piece == Constants::BLACK_KING && to == 2 && from == 4) castle = Constants::Castle::BLACK_QUEEN_SIDE_CASTLE;
 
-    Move mv = {piece,from,capture,to,pawn_promotion,castle};
+    Move mv = longAlgebraicNotationToMove(move,gameBoard);
+
+
+    assert(isPseudoLegalMove(mv,gameBoard) && isLegalMove(mv,gameBoard));
 
     gameBoard.applyPseudoLegalMove(mv);
 }

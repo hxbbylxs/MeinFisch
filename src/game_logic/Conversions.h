@@ -23,6 +23,7 @@ std::array<uint64_t, 13> convertStringToPieceInformation(std::string const & pie
 std::string toString(Constants::Piece piece);
 std::string toString(Constants::Castle castle);
 std::string longAlgebraicNotation(Move move);
+Move longAlgebraicNotationToMove(std::string const & move, GameBoard const & gameBoard);
 
 
 #endif //CONVERSIONS_H

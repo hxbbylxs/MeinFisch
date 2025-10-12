@@ -4,6 +4,7 @@
 #include <array>
 #include <thread>
 
+#include "Utils.h"
 #include "../io/Output.h"
 
 using std::array;
@@ -15,7 +16,10 @@ using std::vector;
 #include "Conversions.h"
 #include "GameBoard.h"
 #include "MoveGeneration.h"
-#include "MoveGenerationConstants.h"
+
+#include "MoveGenerationConstants.h" // lib constants
+
+#include "Utils.h" // lib utils
 
 GameBoard::GameBoard(
     array<uint64_t, 13> const & pieces,
@@ -43,7 +47,7 @@ GameBoard::GameBoard(
     for (int i = 1; i < 13; i++) {
         uint64_t piece = pieces[i];
         while (piece != 0) {
-            int pos_of_piece = __builtin_ctzll(piece);
+            int pos_of_piece = counttzll(piece);
             zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[pos_of_piece][i];
             piece &= piece -1;
         }
@@ -73,7 +77,7 @@ GameBoard::GameBoard() :
         for (int i = 1; i < 13; i++) {
             uint64_t piece = pieces[i];
             while (piece != 0) {
-                int pos_of_piece = __builtin_ctzll(piece);
+                int pos_of_piece = counttzll(piece);
                 zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[pos_of_piece][i];
                 piece &= piece -1;
             }
@@ -86,7 +90,7 @@ GameBoard::GameBoard() :
 
 
 bool GameBoard::isCheck(bool whiteKing) const {
-    int king_position = __builtin_ctzll(pieces[whiteKing?Constants::Piece::WHITE_KING:Constants::Piece::BLACK_KING]);
+    int king_position = counttzll(pieces[whiteKing?Constants::Piece::WHITE_KING:Constants::Piece::BLACK_KING]);
     return isSquareAttacked(king_position,!whiteKing,*this);
 }
 
@@ -174,8 +178,8 @@ void GameBoard::moveRookForCastle(unsigned castle, bool unmake) {
         //case white castles
         pieces[Constants::Piece::WHITE_ROOK] &= ~(castle_rook_positions[castle][unmake]);
         pieces[Constants::Piece::WHITE_ROOK] |= (castle_rook_positions[castle][!unmake]);
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][unmake])][Constants::Piece::WHITE_ROOK];
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][!unmake])][Constants::Piece::WHITE_ROOK];
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[counttzll(castle_rook_positions[castle][unmake])][Constants::Piece::WHITE_ROOK];
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[counttzll(castle_rook_positions[castle][!unmake])][Constants::Piece::WHITE_ROOK];
         white_pieces &= ~(castle_rook_positions[castle][unmake]);
         white_pieces|= (castle_rook_positions[castle][!unmake]);
 
@@ -183,8 +187,8 @@ void GameBoard::moveRookForCastle(unsigned castle, bool unmake) {
         //case black castles
         pieces[Constants::Piece::BLACK_ROOK] &= ~(castle_rook_positions[castle][unmake]);
         pieces[Constants::Piece::BLACK_ROOK] |= (castle_rook_positions[castle][!unmake]);
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][unmake])][Constants::Piece::BLACK_ROOK];
-        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[__builtin_ctzll(castle_rook_positions[castle][!unmake])][Constants::Piece::BLACK_ROOK];
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[counttzll(castle_rook_positions[castle][unmake])][Constants::Piece::BLACK_ROOK];
+        zobristHash ^= Constants::ZOBRIST_HASH_VALUES_PIECES[counttzll(castle_rook_positions[castle][!unmake])][Constants::Piece::BLACK_ROOK];
         black_pieces &= ~(castle_rook_positions[castle][unmake]);
         black_pieces |= (castle_rook_positions[castle][!unmake]);
     }

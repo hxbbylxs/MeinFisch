@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdint>
 #include "Constants.h"
+#include "Utils.h"
 
 inline constexpr int MAX_NUM_BLOCKER_COMBINATIONS = 4096;
 
@@ -207,14 +208,14 @@ inline std::array<std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS>,Constants::N
     inline auto getRookAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         uint64_t const blockerBitMask = nonDiagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & blockerBitMask;
-        uint64_t magicIndex = blockerCombination * magicNumbersForNonDiagonalSliders[from] >> (64 - __builtin_popcountll(blockerBitMask));
+        uint64_t magicIndex = blockerCombination * magicNumbersForNonDiagonalSliders[from] >> (64 - popcountll(blockerBitMask));
         uint64_t possibleMoves = nonDiagonalSlidersAttackBitMask[from][magicIndex];
         return possibleMoves;
     };
     inline auto getBishopAttackBits = [](unsigned from, uint64_t pieceOccupancy) {
         uint64_t const blockerBitmask = diagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & blockerBitmask;
-        uint64_t magicIndex = blockerCombination * magicNumbersForDiagonalSliders[from] >> (64 - __builtin_popcountll(blockerBitmask));
+        uint64_t magicIndex = blockerCombination * magicNumbersForDiagonalSliders[from] >> (64 - popcountll(blockerBitmask));
         uint64_t possibleMoves = diagonalSlidersAttackBitMask[from][magicIndex];
         return possibleMoves;
     };
@@ -222,10 +223,10 @@ inline std::array<std::array<uint64_t,MAX_NUM_BLOCKER_COMBINATIONS>,Constants::N
         uint64_t const d_blockerBitmask = diagonalSliderBlockerBitMasks[from];
         uint64_t const nd_blockerBitmask = nonDiagonalSliderBlockerBitMasks[from];
         uint64_t blockerCombination = pieceOccupancy & nd_blockerBitmask;
-        uint64_t magicIndex = blockerCombination * magicNumbersForNonDiagonalSliders[from] >> (64 - __builtin_popcountll(nd_blockerBitmask));
+        uint64_t magicIndex = blockerCombination * magicNumbersForNonDiagonalSliders[from] >> (64 - popcountll(nd_blockerBitmask));
         uint64_t possibleMoves = nonDiagonalSlidersAttackBitMask[from][magicIndex];
         blockerCombination = pieceOccupancy & d_blockerBitmask;
-        magicIndex = blockerCombination * magicNumbersForDiagonalSliders[from] >> (64 - __builtin_popcountll(d_blockerBitmask));
+        magicIndex = blockerCombination * magicNumbersForDiagonalSliders[from] >> (64 - popcountll(d_blockerBitmask));
         possibleMoves |= diagonalSlidersAttackBitMask[from][magicIndex];
         return possibleMoves;
     };

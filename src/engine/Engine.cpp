@@ -120,7 +120,6 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
     NodeType child_node_type = NodeType::PV_NODE;
 
     bool isCheck = board.isCheck(board.whiteToMove);
-    int num_pieces = __builtin_popcountll(board.white_pieces | board.black_pieces);
 
     Move killer_candidate = 0;
     Move counter_candidate = 0;
@@ -232,6 +231,14 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
             return updateReturnValue(savedData.evaluation);
         }
         if (savedData.evaluationFlag == LOWER_BOUND && savedData.evaluation >= beta) {
+
+            // reward fail high tt entries
+            if (!(savedData.bestMove.capture())) {
+                killer_moves[depth] = savedData.bestMove;
+                counter_moves[previous_move.from()][previous_move.to()] = savedData.bestMove;
+            }
+            increaseMoveScore(savedData.bestMove,remaining_depth);
+
             return updateReturnValue(savedData.evaluation);
         }
     }
@@ -455,7 +462,7 @@ int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta,
         for (Move move : moves) {
 
             int move_gain = abs(STATIC_EG_PIECE_VALUES[move.capture()]) + abs(STATIC_EG_PIECE_VALUES[move.promotion()]);
-            if (current_eval + move_gain + LAZY_EVAL_SAFETY_MARGIN < alpha) continue; // delta pruning
+            if (current_eval + move_gain + 75 < alpha) continue; // delta pruning
             if (!isLegalMove(move,board)) continue;
 
             board.applyPseudoLegalMove(move);
