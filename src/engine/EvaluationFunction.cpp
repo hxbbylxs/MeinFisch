@@ -13,7 +13,6 @@
 int evaluate(GameBoard const & board) {
 
     int game_phase_score = getGamePhaseScore(board); // used for interpolation between middle game and end game
-    if (game_phase_score <= 1 && !board.pieces[Constants::WHITE_PAWN] && !board.pieces[Constants::BLACK_PAWN]) return 0; // insufficient mating material
 
     int mg_evaluation = 0;
     int eg_evaluation = 0;
@@ -33,6 +32,12 @@ int evaluate(GameBoard const & board) {
 
     // linear interpolation between middle game and end game
     int evaluation = (game_phase_score*mg_evaluation + (24-game_phase_score)*eg_evaluation)/24;
+
+    // insufficient mating material (does not cover all cases)
+    bool white_can_mate = game_phase_score > 1 || board.pieces[Constants::WHITE_PAWN];
+    bool black_can_mate = game_phase_score > 1 || board.pieces[Constants::BLACK_PAWN];
+    if (!white_can_mate) evaluation = std::min(0, evaluation);
+    if (!black_can_mate) evaluation = std::max(0, evaluation);
 
     return board.whiteToMove ? evaluation : -evaluation;
 }
