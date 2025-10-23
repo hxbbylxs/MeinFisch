@@ -25,7 +25,7 @@ enum MoveGenPhase {
     QPawns,
     QDone
 };
-inline constexpr int NUM_MOVE_GEN_PHASES = 7;
+inline constexpr int NUM_MOVE_GEN_PHASES = 10;
 
 std::vector<Move> pickNextMoves(Data const & savedData, Move counter_candidate, Move killer_candidate, GameBoard const & board, MoveGenPhase & phase);
 

@@ -1,10 +1,13 @@
 
 #include <chrono>
+#include <Conversions.h>
+#include <EvaluationFunction.h>
 
 #include <iostream>
 #include <Memory.h>
 #include <MoveGeneration.h>
 #include <Output.h>
+#include <PerformanceTest.h>
 
 
 #include "engineUCI.h"

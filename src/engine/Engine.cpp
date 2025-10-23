@@ -28,20 +28,13 @@ using Constants::MoveDecoding;
 
 #include "Output.h" // lib io
 
+#include "Network.h" // lib nnue
+
 
 
 
 int total_nodes_searched = 0;
 int highest_depth = 0;
-int futility_attempts = 0;
-int futility_researches = 0;
-int lmr_attempts = 0;
-int lmr_researches = 0;
-std::array<int,NUM_MOVE_GEN_PHASES> cutoffs = {};
-
-
-
-
 
 
 inline std::chrono::time_point<std::chrono::system_clock> deadline; // ATTENTION - engine uses currently only one search thread (no race conditions)
@@ -55,6 +48,7 @@ void iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
     auto dontStartNewDepthTime = start + (std::chrono::milliseconds((timeLimit)/3));
 
     total_nodes_searched = 0;
+    nnue.reset_to(board);
 
     pair<Move,int> currentBestMove = {};
     pair<Move,int> incompleteMoveCalculation = {}; // result is first stored in here. When timeIsUp the result might be incomplete
@@ -63,12 +57,18 @@ void iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
         if (stop_search) break;
 
         //debug
-        lmr_attempts = 0;
-        lmr_researches = 0;
-        futility_attempts = 0;
-        futility_researches = 0;
-
-
+        nodes_at_depth = {};
+        qnodes_at_depth = {};
+        cutoffs_at_move_number_cutnodes = {};
+        cutoffs_at_move_number_allnodes = {};
+        cutoffs_at_move_gen_phase = {};
+        pv_changes_at_depth = {};
+        total_researches = 0;
+        nmp_prunes = 0;
+        razoring_prunes = 0;
+        exact_tt_hits = 0;
+        bound_tt_hits = 0;
+        qsearch_tt_hits = 0;
 
         currentBestMove = incompleteMoveCalculation;
         highest_depth = 0;
@@ -100,7 +100,7 @@ void iterativeDeepening(GameBoard & board, int timeLimit, int max_depth) {
 pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
 
     total_nodes_searched++;
-    //cutoffs = {};
+    nodes_at_depth[0]++;
 
     Data savedData = getData(board.zobristHash);
 
@@ -147,6 +147,8 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
             move_number++;
 
             board.applyPseudoLegalMove(move);
+            nnue.update(board,move,false,enPassant);
+
             int currentValue;
             int search_window_alpha = alpha;
             int search_window_beta = beta;
@@ -157,7 +159,8 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
 
             switch (phase) {
                 case TTMove:
-                    [[fallthrough]];
+                    depth_reduction = -1;
+                    break;
                 case Good_Captures:
                     [[fallthrough]];
                 case Killer:
@@ -165,13 +168,13 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
                 case Counter:
                     break;
                 case Good_Quiets:
-                    if (!isCheck && move_number > 5) {
+                    if (!isCheck && move_number > 5 && lmr_active && remaining_depth > 2) {
                         // late move reduction
                         depth_reduction = 1;
                     }
                     break;
                 case Bad_Moves:
-                    if (!isCheck) {
+                    if (!isCheck && lmr_active && remaining_depth > 2) {
                         depth_reduction = 1;
                     }
                 default:
@@ -190,6 +193,7 @@ pair<Move,int> getOptimalMoveNegaMax(GameBoard & board, int remaining_depth) {
 
             child_node_type = NodeType::CUT_NODE; // every node after the first one is an expected cut node
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+            nnue.update(board,move,true,enPassant);
 
             if (currentValue > max) {
                 max = currentValue;
@@ -213,6 +217,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     if (stop_search) return Constants::TIME_IS_UP_FLAG;
 
     total_nodes_searched++;
+    nodes_at_depth[depth]++;
 
     int position_repetitions = board.board_positions[board.zobristHash];
     if (position_repetitions >= 3) return 0; // threefold repetition
@@ -225,12 +230,15 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     Data savedData = getData(board.zobristHash);
     if (savedData.evaluationFlag != EMPTY && position_repetitions < 2 && savedData.depth >= remaining_depth) {
         if (savedData.evaluationFlag == EXACT) {
+            exact_tt_hits++;
             return updateReturnValue(savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
         if (savedData.evaluationFlag == UPPER_BOUND && savedData.evaluation <= alpha) {
+            bound_tt_hits++;
             return updateReturnValue(savedData.evaluation);
         }
         if (savedData.evaluationFlag == LOWER_BOUND && savedData.evaluation >= beta) {
+            bound_tt_hits++;
 
             // reward fail high tt entries
             if (!(savedData.bestMove.capture())) {
@@ -260,7 +268,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     // if the side to move has a piece left that is not a pawn or the king the danger of zugzwang is low
     bool zugzwang_danger = !(board.whiteToMove ?  (board.white_pieces & ~board.pieces[Constants::WHITE_KING] & ~board.pieces[Constants::WHITE_PAWN])
                                                 : (board.black_pieces & ~board.pieces[Constants::BLACK_KING] & ~board.pieces[Constants::BLACK_PAWN]));
-    if (!isCheck && null_move_allowed && remaining_depth > 3 && !zugzwang_danger) {
+    if (!isCheck && null_move_allowed && remaining_depth > 3 && !zugzwang_danger && nmp_active) {
         int depth_reduction = 2 + remaining_depth/6;
         board.makeNullMove();
         int null_move_evaluation = -negaMax(board,
@@ -269,6 +277,7 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
                                                 depth,0,false,NodeType::CUT_NODE);
         board.unmakeNullMove(enPassant, hash_before);
         if (null_move_evaluation >= beta) {
+            nmp_prunes++;
             return updateReturnValue(null_move_evaluation);
         }
     }
@@ -276,9 +285,12 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     // Razoring
     // if we are in a leaf node and the static_eval is way worse than alpha, only captures or promotions could help lifting the eval above alpha
     // therefore we go directly into quiescence search
-    if (remaining_depth == 1 && !isCheck) {
+    if (remaining_depth == 1 && !isCheck && razoring_active) {
         int static_eval = evaluate(board);
-        if (static_eval + 75 < alpha) return updateReturnValue(quiscenceSearch(board,0,alpha,beta,depth+1));
+        if (static_eval + 75 < alpha) {
+            razoring_prunes++;
+            return updateReturnValue(quiscenceSearch(board,0,alpha,beta,depth+1));
+        }
     }
 
 
@@ -301,6 +313,13 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
     Move killer_candidate = killer_moves[depth];
     Move counter_candidate = counter_moves[previous_move.from()][previous_move.to()];
 
+    int total_move_number = 0;
+
+    // the the tt move is a capture with sufficient depth, reduce all the other moves
+    int singular_tt_move_reduction = 0;
+    if (savedData.bestMove.capture()) {
+        singular_tt_move_reduction = savedData.depth / 6;
+    }
 
     while (phase != Done) {
         bool breakWhile = false;
@@ -325,8 +344,11 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
 
             foundLegalMove = true;
             move_number++;
+            total_move_number++;
 
             board.applyPseudoLegalMove(move);
+            nnue.update(board,move,false,enPassant);
+
             int currentValue = -CHECKMATE_VALUE;
 
             int search_window_alpha = alpha;
@@ -338,21 +360,26 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
 
             switch (phase) {
                 case TTMove:
-                    [[fallthrough]];
+                    break;
                 case Good_Captures:
-                    [[fallthrough]];
+                    if (!isCheck && move_number > 4 && lmr_active && remaining_depth > 3) {
+                        reduction = 1 + singular_tt_move_reduction;
+                    }
+                    break;
                 case Killer:
-                    [[fallthrough]];
+                    reduction = singular_tt_move_reduction;
+                    break;
                 case Counter:
+                    reduction = singular_tt_move_reduction;
                     break;
                 case Good_Quiets:
-                    if (!isCheck && move_number > 2) {
-                        reduction = 1;
+                    if (!isCheck && move_number > 2 && lmr_active && remaining_depth > 2) {
+                        reduction = static_cast<int>(0.7844 + log(depth) * log(total_move_number) / 2.4696) + singular_tt_move_reduction;
                     }
                     break;
                 case Bad_Moves:
-                    if (!isCheck){
-                        reduction = 1;
+                    if (!isCheck && lmr_active) {
+                        reduction = static_cast<int>(0.7844 + log(depth) * log(total_move_number) / 2.4696) + singular_tt_move_reduction;
                     }
                     break;
                 default:
@@ -365,15 +392,20 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
             // research if
             // - child was searched with null_window or depth was reduced
             // - and fails high
-            if (currentValue > alpha && (child_node_type == NodeType::CUT_NODE || reduction >= 1)) {
+            if (currentValue > search_window_alpha && (child_node_type == NodeType::CUT_NODE || reduction >= 1)) {
+                total_researches++;
                 currentValue = -negaMax(board,
                                             remaining_depth-1,
                                             updateAlphaBetaValue(-(beta)),updateAlphaBetaValue(-alpha),
                                             depth+1,move,true,NodeType::PV_NODE);
             }
+            if (child_node_type != NodeType::PV_NODE && node_type == NodeType::PV_NODE && currentValue > alpha) {
+                pv_changes_at_depth[depth]++;
+            }
 
             child_node_type = NodeType::CUT_NODE; // every further child node is a cut node
             board.unmakeMove(move, enPassant,castle_rights,plies,hash_before);
+            nnue.update(board,move,true,enPassant);
 
             if (!stop_search) {
                 assert(currentValue < CHECKMATE_VALUE+100 && currentValue > -CHECKMATE_VALUE-100);
@@ -392,7 +424,11 @@ int negaMax(GameBoard & board, int remaining_depth, int alpha, int beta, int dep
                     counter_moves[previous_move.from()][previous_move.to()] = move;
                 }
                 increaseMoveScore(move,remaining_depth);
-                //cutoffs[phase]++;
+
+                cutoffs_at_move_gen_phase[phase]++;
+                if (node_type == NodeType::ALL_NODE) cutoffs_at_move_number_allnodes[total_move_number]++;
+                if (node_type == NodeType::CUT_NODE) cutoffs_at_move_number_cutnodes[total_move_number]++;
+
                 breakWhile = true;
                 break;
             }
@@ -429,17 +465,21 @@ int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta,
     if (stop_search) return Constants::TIME_IS_UP_FLAG;
 
     total_nodes_searched++;
+    qnodes_at_depth[depth]++;
     if (depth > highest_depth) highest_depth = depth;
 
     Data savedData = getData(board.zobristHash);
     if (savedData.evaluationFlag != EMPTY && savedData.depth >= remaining_depth) {
         if (savedData.evaluationFlag == EXACT) {
+            qsearch_tt_hits++;
             return (savedData.evaluation); // mate in ... evaluation becomes mate in ...+ 1 ply
         }
         if (savedData.evaluationFlag == UPPER_BOUND && savedData.evaluation <= alpha) {
+            qsearch_tt_hits++;
             return (savedData.evaluation);
         }
         if (savedData.evaluationFlag == LOWER_BOUND && savedData.evaluation >= beta) {
+            qsearch_tt_hits++;
             return (savedData.evaluation);
         }
     }
@@ -462,12 +502,17 @@ int quiscenceSearch(GameBoard & board, int remaining_depth, int alpha, int beta,
         for (Move move : moves) {
 
             int move_gain = abs(STATIC_EG_PIECE_VALUES[move.capture()]) + abs(STATIC_EG_PIECE_VALUES[move.promotion()]);
-            if (current_eval + move_gain + 75 < alpha) continue; // delta pruning
+            if (current_eval + move_gain + 45 < alpha) continue; // delta pruning
             if (!isLegalMove(move,board)) continue;
 
             board.applyPseudoLegalMove(move);
+            nnue.update(board,move,false,enPassant);
+
             int currentValue = -quiscenceSearch(board,remaining_depth-1,(-beta),(-alpha),depth+1);
+
             board.unmakeMove(move,enPassant,castle_rights,plies,hash_before);
+            nnue.update(board,move,true,enPassant);
+
             if (currentValue > alpha) {
                 alpha = currentValue;
                 if (alpha >= beta) {

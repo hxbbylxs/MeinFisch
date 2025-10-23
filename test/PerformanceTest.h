@@ -15,7 +15,7 @@ void testMoveGenPerformance();
 void debugTest();
 int testNegamax(int maxRecursionDepth, GameBoard & board, int alpha, int beta);
 
-
+void testEnginePerformance();
 
 
 #endif //PERFORMANCETEST_H

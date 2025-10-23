@@ -14,6 +14,7 @@
 #include <iostream>
 #include <algorithm>
 #include <Engine.h>
+#include <EvaluationFunction.h>
 #include <Output.h>
 #include <Memory.h>
 
@@ -154,3 +155,60 @@ void testSEE() {
         std::cout << "SEE: " << static_exchange_evaluation(move,board) << std::endl;
     }
 }
+
+/*void testPSTUpdate() {
+
+    std::vector<std::string> fens = {
+        "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+        "8/k5PP/8/8/8/8/6p1/1K3R2 w - - 0 1",
+        "4k2r/Ppq5/8/R2bpP2/n5P1/3r1B1N/1pP1Q3/R3K3 w Qk e6 0 1"
+    };
+    for (auto& fen : fens) {
+        GameBoard board = convertFENtoGameBoard(fen);
+        Accumulator accumulator = Accumulator();
+        accumulator.reset_to(board);
+        auto psm = getPseudoLegalMoves(board,true,ALL);
+        for (auto move : psm) {
+            int mg_before = accumulator.mg_evaluation;
+            int eg_before = accumulator.eg_evaluation;
+            int gp_before = accumulator.game_phase_score;
+
+            accumulator.update(move,board.enPassant,false);
+            accumulator.update(move,board.enPassant,true);
+
+            if (accumulator.mg_evaluation != mg_before) {
+                std::cout << "Test failed: Accumulator Update (mg)" << std::endl;
+                return;
+            }
+            if (accumulator.eg_evaluation != eg_before) {
+                std::cout << "Test failed: Accumulator Update (eg)" << std::endl;
+                return;
+            }
+            if (accumulator.game_phase_score != gp_before) {
+                std::cout << "Test failed: Accumulator Update (gp)" << std::endl;
+                return;
+            }
+        }
+    }
+    std::cout << "Test passed: Accumulator Update 1" << std::endl;
+    GameBoard board = GameBoard();
+    pst_evaluation_accumulator.reset_to(board);
+    int mg_before = pst_evaluation_accumulator.mg_evaluation;
+    int eg_before = pst_evaluation_accumulator.eg_evaluation;
+    int gp_before = pst_evaluation_accumulator.game_phase_score;
+
+    iterativeDeepening(board,Constants::INFINITE,8);
+    if (pst_evaluation_accumulator.mg_evaluation != mg_before) {
+        std::cout << "Test failed: Accumulator Update (mg)" << std::endl;
+        return;
+    }
+    if (pst_evaluation_accumulator.eg_evaluation != eg_before) {
+        std::cout << "Test failed: Accumulator Update (eg)" << std::endl;
+        return;
+    }
+    if (pst_evaluation_accumulator.game_phase_score != gp_before) {
+        std::cout << "Test failed: Accumulator Update (gp)" << std::endl;
+        return;
+    }
+    std::cout << "Test passed: Accumulator Update 2" << std::endl;
+}*/

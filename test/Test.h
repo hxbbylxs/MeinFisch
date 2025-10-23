@@ -11,6 +11,7 @@ void testLegalMoveCheck();
 void testZobristHashUpdate();
 void testUnmakeMove();
 void testSEE();
+void testPSTUpdate();
 
 
 #endif //TEST_H
